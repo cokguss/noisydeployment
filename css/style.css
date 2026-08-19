@@ -52,7 +52,7 @@
    (.modal, .admin-login, .spinner set display, which would otherwise show a
    hidden element). Keep this ABOVE those rules. */
 [hidden] { display: none !important; }
-html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
+html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; overflow-x: clip; }
 @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
 
 body {
@@ -61,7 +61,7 @@ body {
   background: var(--bg);
   line-height: 1.55;
   min-height: 100dvh;
-  overflow-x: hidden;
+  overflow-x: clip;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
