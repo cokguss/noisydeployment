@@ -377,8 +377,11 @@ section[id] { scroll-margin-top: 80px; }
   gap: 20px;
   align-items: stretch;
 }
-.panels { position: relative; }
+.console-grid > * { min-width: 0; }
+.panels { position: relative; min-width: 0; }
 .panel {
+  min-width: 0;
+  overflow-wrap: anywhere;
   border: 1px solid var(--brd);
   border-radius: var(--r-panel);
   background: linear-gradient(180deg, var(--panel-2), var(--panel));
@@ -1169,11 +1172,10 @@ body.admin { display: block; }
   .admin-sidebar-foot { order: 1; margin: 0; padding: 0; border-top: 0; }
   .admin-sidebar-foot .btn { width: auto !important; }
   .admin-nav {
-    order: 2; flex: 1 1 100%; flex-direction: row;
-    min-width: 0; overflow-x: auto; gap: 6px;
-    padding-bottom: 2px; -webkit-overflow-scrolling: touch;
+    order: 2; flex: 1 1 100%; flex-direction: row; flex-wrap: wrap;
+    min-width: 0; gap: 6px; padding-bottom: 2px;
   }
-  .admin-tab { width: auto; white-space: nowrap; flex: none; padding: 9px 13px; }
+  .admin-tab { width: auto; white-space: nowrap; flex: 0 1 auto; padding: 9px 12px; }
   .admin-tab span:first-of-type { flex: none; }
   /* avoid a second sticky layer overlapping the folded sidebar strip */
   .admin-topbar { position: static; }
@@ -1199,12 +1201,21 @@ body.admin { display: block; }
   .nav-links a { padding: 14px 2px; font-size: 1rem; border-bottom: 1px solid var(--brd); }
   .nav-links a:last-child { border-bottom: 0; }
 
-  .nav-status {
+  .nav-menu .nav-status {
     margin-left: 0; order: 0; flex-wrap: wrap; gap: 12px;
     padding-top: 14px; margin-top: 8px; border-top: 1px solid var(--brd);
   }
-  .conn { flex: 1 1 auto; justify-content: flex-start; }
-  .conn-label { max-width: none; }
+  .nav-menu .conn { flex: 1 1 auto; justify-content: flex-start; }
+  .nav-menu .conn-label { max-width: none; }
+
+  /* Legal pages (terms/privacy) have no hamburger: brand + language on row 1,
+     the "back to app" button spans its own full-width row below. */
+  .nav-plain, .nav-plain .nav-inner { height: auto; }
+  .nav-plain .nav-inner { flex-wrap: wrap; padding-top: 12px; padding-bottom: 12px; gap: 12px; }
+  .nav-plain .nav-status { display: contents; }
+  .nav-plain .brand { flex: 1 1 auto; }
+  .nav-plain .lang { margin-left: auto; }
+  .nav-plain .btn { flex: 1 1 100%; justify-content: center; }
 }
 @media (max-width: 620px) {
   .section-head { text-align: left; }
