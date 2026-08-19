@@ -105,6 +105,10 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.6 3H6a3 3 0 0 0-3 3v6.6a2 2 0 0 0 .6 1.4l7 7a2 2 0 0 0 2.8 0l5.6-5.6a2 2 0 0 0 0-2.8l-7-7A2 2 0 0 0 12.6 3Z"/><circle cx="8" cy="8" r="1.2" fill="currentColor" stroke="none"/></svg>
           <span>Pricing</span>
         </button>
+        <button class="admin-tab" data-tab="methods" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="5" width="19" height="14" rx="2.5"/><path d="M2.5 9.5h19"/><path d="M6 15.5h4"/></svg>
+          <span>Payment methods</span>
+        </button>
         <button class="admin-tab" data-tab="announcements" type="button">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 10v4a1 1 0 0 0 1 1h2l3.6 3.4a1 1 0 0 0 1.4-.7V6.3a1 1 0 0 0-1.4-.7L7 9H5a1 1 0 0 0-1 1Z"/><path d="M16 9.5a4 4 0 0 1 0 5"/></svg>
           <span>Announcements</span>
@@ -151,8 +155,8 @@
               <button class="btn btn-ghost btn-sm" id="btnUserSearch" type="button">Search</button>
             </div>
           </div>
-          <p class="admin-hint">Set a plan, extend Premium, or reset the free deploy counter. Developer never expires.</p>
-          <div class="admin-list" id="usersList"><p class="admin-empty">Search for a GitHub login to manage a user.</p></div>
+          <p class="admin-hint">Set a plan, extend Premium, or reset the free deploy counter. Developer never expires. Recently updated users are listed below; search to find a specific login.</p>
+          <div class="admin-list" id="usersList"><p class="admin-empty">Loading…</p></div>
         </section>
 
         <!-- ---- Products / Pricing ---- -->
@@ -160,8 +164,11 @@
           <div class="admin-panel-head"><h2>Pricing</h2></div>
           <p class="admin-hint">Edit the plans shown on the site. Changes appear live via realtime. One feature per line. Period accepts day, week, month, quarter or year (controls how many days Premium is granted on approval).</p>
           <div class="admin-list" id="productsList"><p class="admin-empty">Loading…</p></div>
+        </section>
 
-          <div class="admin-panel-head" style="margin-top:28px"><h2>Payment methods</h2></div>
+        <!-- ---- Payment methods ---- -->
+        <section class="admin-panel" data-panel="methods" hidden>
+          <div class="admin-panel-head"><h2>Payment methods</h2></div>
           <p class="admin-hint">Banks, e-wallets or QRIS buyers can pay with. Each can carry an optional QR image. Shown live in the pay modal.</p>
           <div class="admin-list" id="methodsList"><p class="admin-empty">Loading…</p></div>
         </section>

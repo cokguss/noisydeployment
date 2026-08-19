@@ -165,6 +165,7 @@
         case "payments": return this.loadPayments();
         case "users": return this.searchUsers();
         case "products": return this.loadProducts();
+        case "methods": return this.loadMethods();
         case "announcements": return this.loadAnnouncements();
         case "settings": return this.loadSettings();
       }
@@ -302,15 +303,16 @@
     async searchUsers() {
       const term = $("userSearch").value.trim();
       const box = $("usersList");
-      if (!term) {
-        box.innerHTML = '<p class="admin-empty">Search for a GitHub login to manage a user.</p>';
-        return;
-      }
-      box.innerHTML = '<p class="admin-empty">Searching…</p>';
+      box.innerHTML = '<p class="admin-empty">' + (term ? "Searching…" : "Loading…") + "</p>";
       try {
-        const { data, error } = await this.client.from("profiles")
-          .select("*").ilike("github_login", "%" + term + "%")
-          .order("updated_at", { ascending: false }).limit(25);
+        // No term: list the most recently touched profiles so newly-approved
+        // premium users show up without the admin knowing their login. With a
+        // term: filter by login. The create-a-profile card is only useful when
+        // an exact login was typed, so pass the term through either way.
+        let q = this.client.from("profiles").select("*")
+          .order("updated_at", { ascending: false }).limit(term ? 25 : 50);
+        if (term) q = q.ilike("github_login", "%" + term + "%");
+        const { data, error } = await q;
         if (error) throw error;
         this.renderUsers(data || [], term);
       } catch (e) {
@@ -321,17 +323,22 @@
     renderUsers(rows, term) {
       const box = $("usersList");
       let html = rows.map((u) => this.userCard(u)).join("");
-      // Always offer to create/set a profile for the exact term typed.
-      const safeTerm = U.escapeHtml(term);
-      html += '<div class="admin-item" data-new="1">' +
-        '<div class="admin-item-head"><div>' +
-          '<p class="admin-item-title">Create or set a profile</p>' +
-          '<p class="admin-item-sub">GitHub login: @' + safeTerm + "</p>" +
-        "</div></div>" +
-        '<div class="admin-item-actions">' +
-          this.planSelect("new") +
-          '<button class="btn btn-primary btn-sm" data-act="user-create" data-login="' + safeTerm + '">Create / set plan</button>' +
-        "</div></div>";
+      // Only offer "create a profile" when an exact login was typed; on the
+      // plain (no-term) listing it would just be noise.
+      if (term) {
+        const safeTerm = U.escapeHtml(term);
+        html += '<div class="admin-item" data-new="1">' +
+          '<div class="admin-item-head"><div>' +
+            '<p class="admin-item-title">Create or set a profile</p>' +
+            '<p class="admin-item-sub">GitHub login: @' + safeTerm + "</p>" +
+          "</div></div>" +
+          '<div class="admin-item-actions">' +
+            this.planSelect("new") +
+            '<button class="btn btn-primary btn-sm" data-act="user-create" data-login="' + safeTerm + '">Create / set plan</button>' +
+          "</div></div>";
+      } else if (!rows.length) {
+        html = '<p class="admin-empty">No users yet.</p>';
+      }
       box.innerHTML = html;
     },
 
@@ -478,7 +485,6 @@
           .select("*").order("sort", { ascending: true });
         if (error) throw error;
         this.renderProducts(data || []);
-        this.loadMethods();
       } catch (e) {
         box.innerHTML = '<p class="admin-empty">Could not load products: ' + U.escapeHtml((e && e.message) || "error") + "</p>";
       }
