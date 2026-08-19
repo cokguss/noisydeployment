@@ -345,8 +345,13 @@
     userCard(u) {
       const login = U.escapeHtml(u.github_login || "");
       const until = u.premium_until ? this.fmtDate(u.premium_until) : "not set";
-      const planLabel = u.plan === "developer" ? "developer (unlimited)"
+      const isDev = u.plan === "developer";
+      const planLabel = isDev ? "developer (unlimited)"
         : u.plan === "premium" ? "premium" : "free";
+      // Developer profiles are the owners' own accounts — never offer to delete
+      // them, so a stray click can't wipe an admin's unlimited access.
+      const deleteBtn = isDev ? ""
+        : '<button class="btn btn-danger btn-sm" data-act="user-delete" data-login="' + login + '">Delete user</button>';
       return '<div class="admin-item" data-login="' + login + '">' +
         '<div class="admin-item-head"><div>' +
           '<p class="admin-item-title">@' + login + "</p>" +
@@ -358,7 +363,7 @@
           '<button class="btn btn-ghost btn-sm" data-act="user-apply" data-login="' + login + '">Apply plan</button>' +
           '<button class="btn btn-ghost btn-sm" data-act="user-extend" data-login="' + login + '">Extend +30d</button>' +
           '<button class="btn btn-quiet btn-sm" data-act="user-reset" data-login="' + login + '">Reset quota</button>' +
-          '<button class="btn btn-danger btn-sm" data-act="user-delete" data-login="' + login + '">Delete user</button>' +
+          deleteBtn +
         "</div></div>";
     },
 
@@ -366,9 +371,21 @@
     // kept as an archive (they reference the login as plain text, no FK).
     async deleteProfile(login, btn) {
       if (!login) return;
-      if (!window.confirm("Delete profile @" + login + "? Their payment and deploy history stays as an archive.")) return;
       this.busy(btn, true);
       try {
+        // Guard: developer accounts (the owners' own logins) must never be
+        // deleted, even if a Delete button somehow reaches this handler.
+        const cur = await this.client.from("profiles")
+          .select("plan").eq("github_login", login).maybeSingle();
+        if (cur && cur.data && cur.data.plan === "developer") {
+          this.toast("@" + login + " is a developer account and can't be deleted", "err");
+          this.busy(btn, false);
+          return;
+        }
+        if (!window.confirm("Delete profile @" + login + "? Their payment and deploy history stays as an archive.")) {
+          this.busy(btn, false);
+          return;
+        }
         const { error } = await this.client.from("profiles").delete().eq("github_login", login);
         if (error) throw error;
         this.toast("Profile @" + login + " deleted (history kept)", "ok");
