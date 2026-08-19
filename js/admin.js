@@ -352,6 +352,19 @@
       // them, so a stray click can't wipe an admin's unlimited access.
       const deleteBtn = isDev ? ""
         : '<button class="btn btn-danger btn-sm" data-act="user-delete" data-login="' + login + '">Delete user</button>';
+      // Developer accounts are locked: the plan can't be changed, extended, or
+      // deleted. Show a fixed badge instead of the plan controls.
+      if (isDev) {
+        return '<div class="admin-item" data-login="' + login + '">' +
+          '<div class="admin-item-head"><div>' +
+            '<p class="admin-item-title">@' + login + "</p>" +
+            '<p class="admin-item-sub">Deploys used: ' + (u.deploy_count || 0) +
+              " &middot; Developer account &middot; plan locked</p>" +
+          "</div><span class=\"admin-badge\" data-plan=\"developer\">developer (unlimited)</span></div>" +
+          '<div class="admin-item-actions">' +
+            '<button class="btn btn-quiet btn-sm" data-act="user-reset" data-login="' + login + '">Reset quota</button>' +
+          "</div></div>";
+      }
       return '<div class="admin-item" data-login="' + login + '">' +
         '<div class="admin-item-head"><div>' +
           '<p class="admin-item-title">@' + login + "</p>" +
@@ -426,6 +439,15 @@
     async setPlan(login, plan, btn) {
       this.busy(btn, true);
       try {
+        // Developer accounts are locked: once developer, always developer. Never
+        // let a plan change downgrade them to premium/free.
+        const guard = await this.client.from("profiles")
+          .select("plan").eq("github_login", login).maybeSingle();
+        if (guard && guard.data && guard.data.plan === "developer" && plan !== "developer") {
+          this.toast("@" + login + " is a developer account and its plan is locked", "err");
+          this.busy(btn, false);
+          return;
+        }
         const row = { github_login: login, plan, updated_at: this.nowIso() };
         if (plan === "premium") {
           const cur = await this.client.from("profiles")
@@ -740,12 +762,27 @@
     renderAnnouncements(rows) {
       const box = $("annList");
       if (!rows.length) { box.innerHTML = '<p class="admin-empty">No announcements yet.</p>'; return; }
+      const now = Date.now();
       box.innerHTML = rows.map((a) => {
+        // A banner is visible on the site only when active AND within its window.
+        const started = !a.starts_at || new Date(a.starts_at).getTime() <= now;
+        const ended = a.ends_at && new Date(a.ends_at).getTime() <= now;
+        const visible = a.active && started && !ended;
+        const statusLabel = !a.active ? "hidden"
+          : ended ? "expired"
+          : !started ? "scheduled"
+          : "live";
+        let window = "";
+        if (a.starts_at || a.ends_at) {
+          const from = a.starts_at ? this.fmtDate(a.starts_at) : "now";
+          const to = a.ends_at ? this.fmtDate(a.ends_at) : "no end";
+          window = " &middot; " + U.escapeHtml(from) + " → " + U.escapeHtml(to);
+        }
         return '<div class="admin-item" data-id="' + a.id + '">' +
           '<div class="admin-item-head"><div>' +
             '<p class="admin-item-title">' + U.escapeHtml(a.message || "") + "</p>" +
-            '<p class="admin-item-sub">' + U.escapeHtml(a.level || "info") + " &middot; " + this.fmtDate(a.created_at) + "</p>" +
-          "</div><span class=\"admin-badge\" data-active=\"" + (a.active ? "1" : "0") + "\">" + (a.active ? "live" : "hidden") + "</span></div>" +
+            '<p class="admin-item-sub">' + U.escapeHtml(a.level || "info") + " &middot; " + this.fmtDate(a.created_at) + window + "</p>" +
+          "</div><span class=\"admin-badge\" data-active=\"" + (visible ? "1" : "0") + "\">" + statusLabel + "</span></div>" +
           '<div class="admin-item-actions">' +
             '<button class="btn btn-ghost btn-sm" data-act="ann-toggle" data-id="' + a.id + '" data-active="' + (a.active ? "true" : "false") + '">' + (a.active ? "Hide" : "Show") + "</button>" +
             '<button class="btn btn-quiet btn-sm" data-act="ann-delete" data-id="' + a.id + '">Delete</button>' +
@@ -753,10 +790,16 @@
       }).join("");
     },
 
-    async createAnnouncement() {
+    createAnnouncement: async function () {
       const input = $("annMsg");
       const msg = input.value.trim();
       if (!msg) { this.toast("Type a message first.", "err"); return; }
+      const starts = this.localInputToIso($("annStarts").value);
+      const ends = this.localInputToIso($("annEnds").value);
+      if (starts && ends && new Date(ends).getTime() <= new Date(starts).getTime()) {
+        this.toast("End time must be after start time.", "err");
+        return;
+      }
       const btn = $("btnAnnCreate");
       this.busy(btn, true);
       try {
@@ -765,9 +808,12 @@
         await this.client.from("announcements").update({ active: false }).eq("active", true);
         const { error } = await this.client.from("announcements").insert({
           message: msg, level: $("annLevel").value, active: true,
+          starts_at: starts, ends_at: ends,
         });
         if (error) throw error;
         input.value = "";
+        $("annStarts").value = "";
+        $("annEnds").value = "";
         this.toast("Announcement published.", "ok");
         this.loadAnnouncements();
       } catch (e) {
@@ -869,6 +915,15 @@
     },
 
     nowIso() { return new Date().toISOString(); },
+
+    // A <input type="datetime-local"> value ("2026-08-20T14:30") is local wall
+    // time with no zone. Parsing it with new Date() interprets it as local, so
+    // toISOString() yields the correct UTC instant to store. Empty = null.
+    localInputToIso(value) {
+      if (!value) return null;
+      const d = new Date(value);
+      return isNaN(d.getTime()) ? null : d.toISOString();
+    },
 
     fmtDate(iso) {
       if (!iso) return "unknown";

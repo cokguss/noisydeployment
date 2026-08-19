@@ -408,6 +408,10 @@
     if (!ND.db.enabled) return;
     await refreshLiveData();
     ND.db.subscribeLive(() => { refreshLiveData(); });
+    // Realtime fires on row changes, but a scheduled banner crossing its
+    // starts_at/ends_at boundary is just the clock moving — no DB event. Re-poll
+    // periodically so scheduled announcements appear and expire on time.
+    setInterval(() => { refreshLiveData(); }, 60000);
   }
 
   async function refreshLiveData() {

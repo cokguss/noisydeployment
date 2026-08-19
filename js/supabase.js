@@ -79,8 +79,13 @@
 
     async getActiveAnnouncement() {
       if (!this.enabled) return null;
+      const nowIso = new Date().toISOString();
+      // Visible = active AND started (starts_at null or in the past) AND not
+      // ended (ends_at null or in the future). Pull the newest matching banner.
       const { data } = await this.client
         .from("announcements").select("*").eq("active", true)
+        .or("starts_at.is.null,starts_at.lte." + nowIso)
+        .or("ends_at.is.null,ends_at.gte." + nowIso)
         .order("created_at", { ascending: false }).limit(1);
       return (data && data[0]) || null;
     },

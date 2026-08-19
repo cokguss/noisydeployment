@@ -182,6 +182,15 @@
               <input type="text" id="annMsg" placeholder="e.g. Weekend sale: Premium 20% off" />
             </div>
             <div class="admin-form-row">
+              <label class="admin-inline">Starts
+                <input type="datetime-local" id="annStarts" />
+              </label>
+              <label class="admin-inline">Ends
+                <input type="datetime-local" id="annEnds" />
+              </label>
+            </div>
+            <p class="admin-hint">Leave Starts/Ends empty for no bound. The banner only shows on the site between Starts and Ends (and while it's live).</p>
+            <div class="admin-form-row">
               <label class="admin-inline">Level
                 <select id="annLevel">
                   <option value="info">info</option>

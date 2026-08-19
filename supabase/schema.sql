@@ -129,14 +129,20 @@ create table if not exists public.products (
 
 -- ---------------------------------------------------------------------------
 -- announcements — banner messages, pushed live to the site via Realtime.
+-- starts_at/ends_at bound an optional visibility window (null = no bound).
 -- ---------------------------------------------------------------------------
 create table if not exists public.announcements (
   id         bigint generated always as identity primary key,
   message    text not null,
   level      text not null default 'info' check (level in ('info','warn','success')),
   active     boolean not null default true,
+  starts_at  timestamptz,
+  ends_at    timestamptz,
   created_at timestamptz not null default now()
 );
+-- Backfill for existing databases created before the scheduling columns.
+alter table public.announcements add column if not exists starts_at timestamptz;
+alter table public.announcements add column if not exists ends_at   timestamptz;
 
 -- ---------------------------------------------------------------------------
 -- settings — singleton (id = 1): bank + telegram + toggles. Public-readable.
