@@ -732,7 +732,7 @@ button.btn.btn-primary#btnConnect,
 
 /* --------------------------------------------------------------- toasts */
 .toasts {
-  position: fixed; right: 18px; bottom: 18px; z-index: 80;
+  position: fixed; right: 18px; bottom: 18px; z-index: 120;
   display: grid; gap: 10px; max-width: min(360px, calc(100vw - 36px));
 }
 .toast {
