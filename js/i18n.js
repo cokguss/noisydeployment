@@ -22,6 +22,7 @@
       "nav.faq": "FAQ",
       "nav.team": "Team",
       "nav.lang": "Language",
+      "nav.menu": "Menu",
 
       /* hero */
       "hero.sub": "Drop your files, paste a token, get a live link. Your site goes straight to GitHub Pages from the browser.",
@@ -270,8 +271,10 @@
       "pay.proofSelected": "Selected: {name}",
       "pay.step3": "3. Confirm on Telegram",
       "pay.confirmHint": "Send your proof to us on Telegram so we can activate Premium.",
-      "pay.viaDev": "Confirm with Developer",
-      "pay.viaSupport": "Confirm with Support",
+      "pay.confirm": "Confirm on Telegram",
+      "pay.confirmVia": "This payment will be confirmed with our {via} on Telegram.",
+      "pay.viaDev": "Developer",
+      "pay.viaSupport": "Support",
       "pay.uploading": "Uploading proof…",
       "pay.submitted": "Proof uploaded. Now confirm on Telegram to finish.",
       "pay.needProof": "Upload your transfer proof first.",
@@ -335,6 +338,7 @@
       "nav.faq": "Tanya jawab",
       "nav.team": "Tim",
       "nav.lang": "Bahasa",
+      "nav.menu": "Menu",
 
       /* hero */
       "hero.sub": "Taruh file-mu, tempel token, dapat link langsung. Situsmu langsung tayang ke GitHub Pages dari browser.",
@@ -583,8 +587,10 @@
       "pay.proofSelected": "Dipilih: {name}",
       "pay.step3": "3. Konfirmasi di Telegram",
       "pay.confirmHint": "Kirim buktimu ke kami di Telegram agar Premium bisa diaktifkan.",
-      "pay.viaDev": "Konfirmasi ke Developer",
-      "pay.viaSupport": "Konfirmasi ke Support",
+      "pay.confirm": "Konfirmasi di Telegram",
+      "pay.confirmVia": "Pembayaran ini akan dikonfirmasi ke {via} kami di Telegram.",
+      "pay.viaDev": "Developer",
+      "pay.viaSupport": "Support",
       "pay.uploading": "Mengunggah bukti…",
       "pay.submitted": "Bukti terunggah. Sekarang konfirmasi di Telegram untuk menyelesaikan.",
       "pay.needProof": "Unggah bukti transfermu dulu.",

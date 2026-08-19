@@ -418,12 +418,15 @@
 
   // Upload proof + record a pending payment, then hand off to Telegram with a
   // prefilled message (also copied to the clipboard as a reliable fallback).
-  async function confirmPayment(which, btn) {
+  async function confirmPayment(btn) {
     const login = state.user && state.user.login;
     if (!login) { ui.toast(ND.t("pay.needLogin"), "err"); ui.closePay(); goto("connect"); return; }
 
     const handles = telegramHandles();
-    const handle = which === "support" ? handles.support : handles.dev;
+    // The chosen method decides who the buyer confirms to: a developer QRIS/bank
+    // routes to the developer, a support one routes to support. Falls back to dev.
+    const target = (state.payMethod && state.payMethod.confirm_target) === "support" ? "support" : "dev";
+    const handle = target === "support" ? handles.support : handles.dev;
     const plan = state.payPlan || { amount: ui.currentPrice(), days: 30, planName: "Premium" };
     const amount = plan.amount;
     let proofUrl = "";
@@ -465,6 +468,20 @@
   /* --------------------------------------------------------------- wire */
   function wire() {
     const c = ui.el;
+
+    // mobile nav: hamburger toggles the section-links dropdown
+    const nav = document.querySelector(".nav");
+    const navToggle = document.getElementById("navToggle");
+    if (nav && navToggle) {
+      const setOpen = (open) => {
+        nav.classList.toggle("is-open", open);
+        navToggle.setAttribute("aria-expanded", open ? "true" : "false");
+      };
+      navToggle.addEventListener("click", () => setOpen(!nav.classList.contains("is-open")));
+      const links = document.getElementById("primaryNav");
+      if (links) links.addEventListener("click", (e) => { if (e.target.closest("a")) setOpen(false); });
+      window.addEventListener("resize", () => { if (window.innerWidth > 760) setOpen(false); });
+    }
 
     // connect
     c.btnConnect.addEventListener("click", connect);
@@ -553,8 +570,7 @@
     }
     if (c.btnChooseProof) c.btnChooseProof.addEventListener("click", () => c.inputProof.click());
     if (c.inputProof) c.inputProof.addEventListener("change", (e) => { chooseProof(e.target.files[0]); e.target.value = ""; });
-    if (c.btnPayDev) c.btnPayDev.addEventListener("click", () => confirmPayment("dev", c.btnPayDev));
-    if (c.btnPaySupport) c.btnPaySupport.addEventListener("click", () => confirmPayment("support", c.btnPaySupport));
+    if (c.btnPayConfirm) c.btnPayConfirm.addEventListener("click", () => confirmPayment(c.btnPayConfirm));
     document.addEventListener("keydown", (e) => { if (e.key === "Escape" && ui.isPayOpen()) ui.closePay(); });
 
     // anchors: open the token FAQ when linked, smooth-scroll with nav offset

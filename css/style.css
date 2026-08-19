@@ -158,6 +158,15 @@ code { font-family: var(--mono); font-size: 0.9em; color: var(--accent); }
 .nav-links { margin-left: 12px; display: flex; gap: 22px; }
 .nav-links a { color: var(--muted); font-size: 0.92rem; }
 .nav-links a:hover { color: var(--text); text-decoration: none; }
+/* Hamburger: hidden on desktop, shown on narrow screens (see media queries). */
+.nav-toggle {
+  display: none; margin-left: auto;
+  width: 40px; height: 40px; align-items: center; justify-content: center;
+  border: 1px solid var(--brd-2); border-radius: var(--r-ctrl);
+  background: transparent; color: var(--text); cursor: pointer;
+}
+.nav-toggle .i { width: 22px; height: 22px; stroke: currentColor; fill: none; stroke-width: 2; }
+.nav-toggle:hover { border-color: var(--accent); }
 .nav-status { margin-left: auto; display: flex; align-items: center; gap: 12px; }
 
 .rate {
@@ -1160,8 +1169,23 @@ body.admin { display: block; }
   .admin-sidebar-foot { margin: 0; padding: 0; border-top: 0; }
   .admin-sidebar-foot .btn { width: auto !important; }
 }
+/* Tablet / small: fold section nav into a hamburger dropdown. */
+@media (max-width: 760px) {
+  .nav-inner { position: relative; gap: 10px; }
+  .nav-toggle { display: inline-flex; order: 3; margin-left: 8px; }
+  .nav-status { order: 2; margin-left: auto; gap: 8px; }
+  .conn-label { max-width: 92px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .nav-links {
+    order: 4; margin: 0; display: none; flex-direction: column; gap: 0;
+    position: absolute; left: 0; right: 0; top: calc(100% + 1px);
+    background: rgba(5, 6, 10, 0.98); border-bottom: 1px solid var(--brd);
+    padding: 6px 20px 12px;
+  }
+  .nav.is-open .nav-links { display: flex; }
+  .nav-links a { padding: 13px 2px; font-size: 1rem; border-bottom: 1px solid var(--brd); }
+  .nav-links a:last-child { border-bottom: 0; }
+}
 @media (max-width: 620px) {
-  .nav-links { display: none; }
   .section-head { text-align: left; }
   .step-t { display: none; }
   .stepper { max-width: 100%; }
@@ -1176,10 +1200,20 @@ body.admin { display: block; }
   .plans { grid-template-columns: 1fr; }
   .pay-row { flex-wrap: wrap; }
   .pay-row dt { width: auto; }
+  .pay-confirm .btn { width: 100%; }
+  .pay-method-details .pay-row .btn { margin-left: 0; }
   .admin-sidebar { flex-wrap: wrap; }
   .admin-search { width: 100%; }
   .admin-search input { flex: 1; min-width: 0; }
   .admin-item-head { flex-direction: column; }
+  .admin-topbar { flex-wrap: wrap; gap: 10px; }
+  .admin-panel-head h2 { font-size: 1.15rem; }
+  .admin-form-row { gap: 10px; }
+  .admin-form-row .btn { width: 100%; }
+  .admin-item-actions { gap: 8px; }
+  .admin-item-actions .btn { flex: 1 1 auto; justify-content: center; }
+  .admin-plan-select, select#annLevel { width: 100%; }
+  .admin-proof { max-width: 100%; }
 }
 
 /* ============================================================================

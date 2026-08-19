@@ -514,6 +514,10 @@
           '<div class="admin-form">' +
             this.fieldRow("Label", '<input type="text" data-f="label" value="' + U.escapeHtml(m.label || "") + '" />') +
             '<div class="field"><label>Kind</label><select class="admin-plan-select" data-f="kind">' + kindOpt(m.kind) + "</select></div>" +
+            '<div class="field"><label>Confirm to</label><select class="admin-plan-select" data-f="confirm_target">' +
+              '<option value="dev"' + (m.confirm_target !== "support" ? " selected" : "") + ">Developer</option>" +
+              '<option value="support"' + (m.confirm_target === "support" ? " selected" : "") + ">Support</option>" +
+            "</select></div>" +
             this.fieldRow("Account / number (optional)", '<input type="text" data-f="account" value="' + U.escapeHtml(m.account || "") + '" />') +
             this.fieldRow("Holder (optional)", '<input type="text" data-f="holder" value="' + U.escapeHtml(m.holder || "") + '" />') +
             this.fieldRow("Instructions (optional)", '<input type="text" data-f="instructions" value="' + U.escapeHtml(m.instructions || "") + '" />') +
@@ -538,6 +542,7 @@
         const patch = {
           label: val("label").trim(),
           kind: val("kind") || "bank",
+          confirm_target: val("confirm_target") === "support" ? "support" : "dev",
           account: val("account").trim() || null,
           holder: val("holder").trim() || null,
           instructions: val("instructions").trim() || null,

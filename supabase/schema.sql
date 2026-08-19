@@ -101,10 +101,15 @@ create table if not exists public.payment_methods (
   holder       text,                 -- account holder name
   instructions text,                 -- optional extra note shown to the buyer
   qr_url       text,                 -- optional QR image (public URL in 'assets')
+  confirm_target text not null default 'dev'
+    check (confirm_target in ('dev','support')), -- which Telegram the buyer confirms to
   active       boolean not null default true,
   sort         integer not null default 0,
   updated_at   timestamptz not null default now()
 );
+-- Back-fill for databases created before confirm_target existed.
+alter table public.payment_methods
+  add column if not exists confirm_target text not null default 'dev';
 
 -- ---------------------------------------------------------------------------
 -- products — the pricing/plans shown on the site (editable in admin, live).

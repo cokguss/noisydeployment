@@ -127,7 +127,7 @@
         "quotaBanner", "quotaText", "btnQuotaUpgrade",
         "pricingSub", "freeF1", "plans",
         "payModal", "payNeedLogin", "payAmount", "payMethods", "payMethodDetails",
-        "btnChooseProof", "inputProof", "payProofName", "btnPayDev", "btnPaySupport",
+        "btnChooseProof", "inputProof", "payProofName", "btnPayConfirm", "payConfirmHint",
         "payPlanName",
       ];
       ids.forEach((id) => { this.el[id] = document.getElementById(id); });
@@ -505,6 +505,11 @@
       }];
       const showDetails = (m) => {
         this._onPickMethod(m);
+        // Tell the buyer who they'll confirm to for this method (auto-routed).
+        if (c.payConfirmHint) {
+          const via = m.confirm_target === "support" ? ND.t("pay.viaSupport") : ND.t("pay.viaDev");
+          c.payConfirmHint.textContent = ND.t("pay.confirmVia", { via: via });
+        }
         if (!details) return;
         const rows = [];
         if (m.account) rows.push(this._payRow(ND.t("pay.account"), m.account, true));
