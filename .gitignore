@@ -1,0 +1,10 @@
+# Reference dump from the original bot — contains leaked third-party secrets.
+# Never publish this; kept locally as read-only reference only.
+extracted/
+
+# OS / editor junk
+.DS_Store
+Thumbs.db
+*.log
+.vscode/
+.idea/

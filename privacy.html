@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <script>document.documentElement.classList.add("js");</script>
+  <title data-i18n="legal.privacy.title">Privacy Policy - Noisy Deploy</title>
+  <meta name="color-scheme" content="dark" />
+  <meta name="theme-color" content="#05060a" />
+  <link rel="icon" type="image/svg+xml" href="assets/favicon.svg" />
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="css/animations.css" />
+</head>
+<body>
+  <div class="bg" aria-hidden="true">
+    <span class="bg-orb bg-orb-1"></span>
+    <span class="bg-orb bg-orb-2"></span>
+    <span class="bg-orb bg-orb-3"></span>
+  </div>
+
+  <header class="nav">
+    <div class="nav-inner">
+      <a class="brand" href="index.html" aria-label="Noisy Deploy home">
+        <svg class="brand-mark" viewBox="0 0 64 64" width="26" height="26" aria-hidden="true">
+          <rect width="64" height="64" rx="16" fill="#0a0d16"/>
+          <g fill="none" stroke="#22d3ee" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M20 33 L32 21 L44 33"/><path d="M20 44 L32 32 L44 44"/>
+          </g>
+        </svg>
+        <span class="brand-name">Noisy<span class="brand-dim">Deploy</span></span>
+      </a>
+      <div class="nav-status">
+        <div class="lang" role="group" data-i18n-attr="aria-label:nav.lang">
+          <button class="lang-opt is-active" data-lang="en" type="button" aria-pressed="true">EN</button>
+          <button class="lang-opt" data-lang="id" type="button" aria-pressed="false">ID</button>
+        </div>
+        <a class="btn btn-ghost btn-sm" href="index.html" data-i18n="legal.back">Back to app</a>
+      </div>
+    </div>
+  </header>
+
+  <main id="top" class="legal">
+    <article class="legal-doc">
+      <h1 class="legal-h" data-i18n="legal.privacy.title">Privacy Policy</h1>
+      <p class="legal-updated" data-i18n="legal.updated">Last updated: 19 August 2026</p>
+      <div class="legal-body" data-i18n-html="legal.privacy.body"></div>
+      <p class="legal-foot"><a href="index.html" data-i18n="legal.back">Back to app</a></p>
+    </article>
+  </main>
+
+  <script src="js/config.js"></script>
+  <script src="js/i18n.js"></script>
+  <script>
+    (function () {
+      ND.i18n.init();
+      document.querySelectorAll(".lang-opt").forEach(function (b) {
+        b.addEventListener("click", function () { ND.i18n.set(b.getAttribute("data-lang")); });
+      });
+    })();
+  </script>
+</body>
+</html>

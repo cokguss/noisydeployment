@@ -1,0 +1,631 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <script>
+    document.documentElement.classList.add("js");
+    // Show the intro splash only once per tab session. sessionStorage survives a
+    // refresh in the same tab (so no re-show), but a brand-new tab starts fresh.
+    try { if (sessionStorage.getItem("nd.splashShown")) document.documentElement.classList.add("nd-nosplash"); } catch (e) {}
+  </script>
+  <title data-i18n="meta.title">Noisy Deploy: ship any site to GitHub Pages from your browser</title>
+  <meta name="description" content="Drop your files, paste a GitHub token, get a live link. Noisy Deploy pushes your static site straight to GitHub Pages. No terminal, no build step, no server." />
+  <meta name="color-scheme" content="dark" />
+  <meta name="theme-color" content="#05060a" />
+  <link rel="icon" type="image/svg+xml" href="assets/favicon.svg" />
+
+  <!-- Open Graph -->
+  <meta property="og:title" content="Noisy Deploy" />
+  <meta property="og:description" content="Ship any static site to GitHub Pages from your browser." />
+  <meta property="og:type" content="website" />
+
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="css/animations.css" />
+</head>
+<body>
+  <!-- Intro splash: shows once per tab session (see head + footer scripts) -->
+  <div class="preloader" id="preloader" aria-hidden="true">
+    <div class="preloader-inner">
+      <svg class="preloader-mark" viewBox="0 0 64 64" width="72" height="72" aria-hidden="true">
+        <rect width="64" height="64" rx="16" fill="#0a0d16"/>
+        <g fill="none" stroke="#22d3ee" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M20 33 L32 21 L44 33"/><path d="M20 44 L32 32 L44 44"/>
+        </g>
+      </svg>
+      <span class="preloader-name">Noisy<span class="brand-dim">Deploy</span></span>
+      <span class="preloader-bar" aria-hidden="true"><i></i></span>
+    </div>
+  </div>
+
+  <!-- Ambient background: soft neon orbs that drift slowly (pure CSS, no noise) -->
+  <div class="bg" aria-hidden="true">
+    <span class="bg-orb bg-orb-1"></span>
+    <span class="bg-orb bg-orb-2"></span>
+    <span class="bg-orb bg-orb-3"></span>
+  </div>
+
+  <noscript>
+    <div style="background:#fbbf24;color:#04121a;padding:12px 16px;text-align:center;font:600 14px/1.5 system-ui,sans-serif">
+      Noisy Deploy needs JavaScript to talk to GitHub. Please enable it to deploy.
+    </div>
+  </noscript>
+
+  <!-- ===================== ANNOUNCEMENT BAR ===================== -->
+  <!-- Filled live from Supabase (announcements table). Hidden until there is one. -->
+  <div class="announce" id="announceBar" data-level="info" role="status" hidden>
+    <span class="announce-msg" id="announceMsg"></span>
+    <button class="announce-x" id="announceClose" type="button"
+            data-i18n-attr="aria-label:announce.dismiss" aria-label="Dismiss announcement">
+      <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6L6 18M6 6l12 12"/></svg>
+    </button>
+  </div>
+
+  <!-- ============================ NAV ============================ -->
+  <header class="nav">
+    <div class="nav-inner">
+      <a class="brand" href="#top" aria-label="Noisy Deploy home">
+        <svg class="brand-mark" viewBox="0 0 64 64" width="26" height="26" aria-hidden="true">
+          <rect width="64" height="64" rx="16" fill="#0a0d16"/>
+          <g fill="none" stroke="#22d3ee" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M20 33 L32 21 L44 33"/><path d="M20 44 L32 32 L44 44"/>
+          </g>
+        </svg>
+        <span class="brand-name">Noisy<span class="brand-dim">Deploy</span></span>
+      </a>
+
+      <nav class="nav-links" aria-label="Primary">
+        <a href="#how" data-i18n="nav.how">How it works</a>
+        <a href="#pricing" data-i18n="nav.pricing">Pricing</a>
+        <a href="#guide" data-i18n="nav.guide">Token guide</a>
+        <a href="#faq" data-i18n="nav.faq">FAQ</a>
+        <a href="#team" data-i18n="nav.team">Team</a>
+      </nav>
+
+      <div class="nav-status">
+        <div class="lang" role="group" data-i18n-attr="aria-label:nav.lang">
+          <button class="lang-opt is-active" id="langEn" data-lang="en" type="button" aria-pressed="true">EN</button>
+          <button class="lang-opt" id="langId" data-lang="id" type="button" aria-pressed="false">ID</button>
+        </div>
+        <span class="rate" id="rate" title="GitHub API requests left this hour" hidden></span>
+        <div class="conn" id="connChip" data-state="off">
+          <img class="conn-avatar" id="connAvatar" alt="" width="22" height="22" hidden />
+          <span class="conn-dot" aria-hidden="true"></span>
+          <span class="conn-label" id="connLabel" data-i18n="conn.notConnected">Not connected</span>
+          <button class="conn-forget" id="btnForget" type="button" data-i18n="conn.forget" hidden>Forget</button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main id="top">
+    <!-- ============================ HERO ============================ -->
+    <section class="hero">
+      <div class="hero-grid">
+        <div class="hero-copy">
+          <h1 class="wordmark" data-text="Noisy Deploy">Noisy Deploy</h1>
+          <p class="hero-sub" data-i18n="hero.sub">
+            Drop your files, paste a token, get a live link. Your site goes
+            straight to GitHub Pages from the browser.
+          </p>
+          <div class="hero-cta">
+            <a class="btn btn-primary" href="#deploy" data-scroll>
+              <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M12 5l-6 6M12 5l6 6"/></svg>
+              <span data-i18n="hero.cta.start">Start deploying</span>
+            </a>
+            <a class="btn btn-ghost" href="#guide" data-i18n="hero.cta.token">How to get a token</a>
+          </div>
+          <ul class="hero-facts">
+            <li data-i18n-html="hero.fact1"><b>No terminal.</b> No git commands.</li>
+            <li data-i18n-html="hero.fact2"><b>No server.</b> Your token never leaves your browser.</li>
+            <li data-i18n-html="hero.fact3"><b>No build step.</b> Static files go live as-is.</li>
+          </ul>
+        </div>
+
+        <div class="hero-visual">
+          <div class="visual-card">
+            <canvas id="heroCanvas" aria-hidden="true"></canvas>
+            <div class="visual-cap"><span class="blip"></span> noise → signal</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================= DEPLOY CONSOLE ========================= -->
+    <section id="deploy" class="console reveal">
+      <div class="section-head">
+        <h2 data-i18n="console.h">Deploy console</h2>
+        <p data-i18n="console.sub">Four steps. The last one is watching it go live.</p>
+      </div>
+
+      <ol class="stepper" id="stepper" data-i18n-attr="aria-label:stepper.aria" aria-label="Deployment progress">
+        <li class="step is-active" data-step="connect"><span class="step-n">1</span><span class="step-t" data-i18n="step.connect">Connect</span></li>
+        <li class="step" data-step="files"><span class="step-n">2</span><span class="step-t" data-i18n="step.files">Files</span></li>
+        <li class="step" data-step="config"><span class="step-n">3</span><span class="step-t" data-i18n="step.config">Configure</span></li>
+        <li class="step" data-step="deploy"><span class="step-n">4</span><span class="step-t" data-i18n="step.deploy">Deploy</span></li>
+      </ol>
+
+      <!-- Quota banner: your plan and remaining free deploys. Filled by app.js
+           after asking the quota service. Hidden until there is something to say. -->
+      <div class="quota" id="quotaBanner" data-state="free" role="status" hidden>
+        <span class="quota-dot" aria-hidden="true"></span>
+        <span class="quota-text" id="quotaText"></span>
+        <button class="btn btn-primary btn-sm quota-up" id="btnQuotaUpgrade" type="button" data-i18n="quota.upgrade" hidden>Upgrade</button>
+      </div>
+
+      <div class="console-grid">
+        <div class="panels">
+          <!-- ---- Panel: Connect ---- -->
+          <div class="panel" data-panel="connect">
+            <h3 class="panel-h" data-i18n="connect.h">Connect your GitHub</h3>
+            <p class="panel-p" data-i18n-html="connect.p">
+              Paste a personal access token with the <code>repo</code> scope.
+              It is stored only in this browser and sent only to GitHub.
+            </p>
+
+            <div class="field">
+              <label for="token" data-i18n="connect.label">GitHub token</label>
+              <div class="token-input">
+                <input id="token" type="password" inputmode="text" autocomplete="off"
+                       spellcheck="false" placeholder="ghp_… or github_pat_…"
+                       data-i18n-attr="placeholder:connect.placeholder" />
+                <button type="button" class="pw-toggle" id="btnReveal"
+                        data-i18n-attr="aria-label:a11y.showToken, title:a11y.showToken"
+                        aria-label="Show token" title="Show token">
+                  <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>
+                </button>
+              </div>
+              <p class="hint" data-i18n-html="connect.hint">
+                Need one?
+                <a href="https://github.com/settings/tokens/new?description=Noisy%20Deploy&scopes=repo" target="_blank" rel="noopener noreferrer">Create a token with the right scope</a>,
+                or read the <a href="#guide">step-by-step</a>.
+              </p>
+              <p class="inline-error" data-error="connect" role="alert" hidden></p>
+            </div>
+
+            <button class="btn btn-primary" id="btnConnect" type="button">
+              <span class="btn-label" data-i18n="connect.btn">Connect</span>
+              <span class="spinner" hidden></span>
+            </button>
+
+            <div class="connected-card" id="connectedCard" hidden>
+              <img id="meAvatar" class="me-avatar" alt="" width="44" height="44" />
+              <div class="me-meta">
+                <span class="me-name" id="meName"></span>
+                <span class="me-login" id="meLogin"></span>
+              </div>
+              <div class="connected-actions">
+                <button class="btn btn-ghost btn-sm" id="btnContinueFiles" type="button" data-i18n="connect.continue">Continue</button>
+                <button class="btn btn-quiet btn-sm" id="btnForget2" type="button" data-i18n="connect.forgetToken">Forget token</button>
+              </div>
+            </div>
+
+            <p class="privacy" data-i18n-html="connect.privacy">
+              Your token lives in <code>localStorage</code> on this device only. Use <b>Forget</b> to wipe it.
+            </p>
+          </div>
+
+          <!-- ---- Panel: Files ---- -->
+          <div class="panel" data-panel="files" hidden>
+            <h3 class="panel-h" data-i18n="files.h">Add your files</h3>
+            <p class="panel-p" data-i18n="files.p">Drop a folder or pick files. HTML, CSS, JS, images, fonts. All of it.</p>
+
+            <div class="dropzone" id="dropzone" tabindex="0" role="button"
+                 data-i18n-attr="aria-label:files.dzAria"
+                 aria-label="Drop files here, or press Enter to choose files">
+              <svg class="i i-lg" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V5m0 0L7 10m5-5l5 5"/><path d="M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2"/></svg>
+              <p class="dz-title" data-i18n="files.dzTitle">Drag &amp; drop your site here</p>
+              <p class="dz-sub" data-i18n="files.or">or</p>
+              <div class="dz-btns">
+                <button class="btn btn-ghost btn-sm" id="btnPickFiles" type="button" data-i18n="files.chooseFiles">Choose files</button>
+                <button class="btn btn-ghost btn-sm" id="btnPickFolder" type="button" data-i18n="files.chooseFolder">Choose folder</button>
+              </div>
+              <input id="inputFiles" type="file" multiple hidden />
+              <input id="inputFolder" type="file" webkitdirectory hidden />
+            </div>
+
+            <p class="file-warn" id="fileWarn" role="alert" hidden>
+              <svg class="i i-sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 9v4m0 4h.01M10.3 4.3L2.4 18a2 2 0 001.7 3h15.8a2 2 0 001.7-3L13.7 4.3a2 2 0 00-3.4 0z"/></svg>
+              <span></span>
+            </p>
+
+            <div class="filelist-wrap" id="filelistWrap" hidden>
+              <div class="filelist-head">
+                <span id="fileCount">0 files</span>
+                <button class="btn btn-quiet btn-sm" id="btnClearFiles" type="button" data-i18n="files.clearAll">Clear all</button>
+              </div>
+              <ul class="filelist" id="filelist"></ul>
+            </div>
+
+            <div class="preview-wrap" id="previewWrap" hidden>
+              <button class="preview-toggle" id="btnPreview" type="button" aria-expanded="false">
+                <svg class="i i-sm chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
+                <span data-i18n-html="files.preview">Preview <code>index.html</code></span>
+              </button>
+              <div class="preview-frame" id="previewFrame" hidden>
+                <iframe id="preview" title="Preview of index.html" sandbox="allow-scripts"></iframe>
+              </div>
+            </div>
+
+            <div class="panel-nav">
+              <button class="btn btn-quiet" data-back="connect" type="button" data-i18n="files.back">Back</button>
+              <button class="btn btn-primary" id="btnToConfig" type="button" data-i18n="files.continue" disabled>Continue</button>
+            </div>
+          </div>
+
+          <!-- ---- Panel: Configure ---- -->
+          <div class="panel" data-panel="config" hidden>
+            <h3 class="panel-h" data-i18n="config.h">Name your project</h3>
+            <p class="panel-p" data-i18n="config.p">This becomes the repository name and the last part of your URL.</p>
+
+            <div class="field">
+              <label for="projectName" data-i18n="config.label.name">Project name</label>
+              <input id="projectName" type="text" autocomplete="off" spellcheck="false" placeholder="my-cool-site"
+                     data-i18n-attr="placeholder:config.namePlaceholder" />
+              <p class="url-preview"><span data-i18n="config.urlPrefix">Your site will live at</span> <code id="urlEcho">username.github.io/…/</code></p>
+              <p class="inline-error" data-error="config" role="alert" hidden></p>
+            </div>
+
+            <div class="field">
+              <label for="projectDesc" data-i18n-html="config.label.desc">Description <span class="opt">(optional)</span></label>
+              <input id="projectDesc" type="text" autocomplete="off" placeholder="A little site I made"
+                     data-i18n-attr="placeholder:config.descPlaceholder" />
+            </div>
+
+            <p class="note" data-i18n-html="config.note">
+              Repositories are created <b>public</b> so GitHub Pages works on the free plan.
+              Re-using a name updates that same project.
+            </p>
+
+            <div class="panel-nav">
+              <button class="btn btn-quiet" data-back="files" type="button" data-i18n="config.back">Back</button>
+              <button class="btn btn-primary btn-deploy" id="btnDeploy" type="button">
+                <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 16.5L3 21l4.5-1.5M14 4l6 6M6.5 19.5l-2-2L15 7l2 2L6.5 19.5zM15 7l2-3 3 3-3 2-2-2z"/></svg>
+                <span class="btn-label" data-i18n="config.deploy">Deploy it</span>
+                <span class="spinner" hidden></span>
+              </button>
+            </div>
+          </div>
+
+          <!-- ---- Panel: Success ---- -->
+          <div class="panel panel-success" data-panel="success" hidden>
+            <div class="success-mark" id="successMark" aria-hidden="true">
+              <svg class="i" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>
+            </div>
+            <h3 class="panel-h" data-i18n="success.h">It is live</h3>
+            <p class="panel-p" id="successNote">Your site is deployed to GitHub Pages.</p>
+
+            <a class="live-url" id="liveUrl" href="#" target="_blank" rel="noopener noreferrer">
+              <span id="liveUrlText">https://…</span>
+              <svg class="i i-sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3h7v7M21 3l-9 9M10 5H5a2 2 0 00-2 2v12a2 2 0 002 2h12a2 2 0 002-2v-5"/></svg>
+            </a>
+
+            <div class="success-actions">
+              <button class="btn btn-primary" id="btnOpen" type="button" data-i18n="success.open">Open site</button>
+              <button class="btn btn-ghost" id="btnCopy" type="button">
+                <svg class="i i-sm" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 012-2h10"/></svg>
+                <span data-i18n="success.copy">Copy link</span>
+              </button>
+              <a class="btn btn-ghost" id="btnRepo" href="#" target="_blank" rel="noopener noreferrer" data-i18n="success.repo">View repo</a>
+            </div>
+            <button class="btn btn-quiet btn-sm" id="btnAnother" type="button" data-i18n="success.another">Deploy another</button>
+          </div>
+        </div>
+
+        <!-- ---- Live log ---- -->
+        <aside class="logwrap" aria-label="Deployment log">
+          <div class="log-head">
+            <span class="log-dots" aria-hidden="true"><i></i><i></i><i></i></span>
+            <span class="log-title" data-i18n="log.title">deploy log</span>
+          </div>
+          <div class="log" id="log">
+            <p class="log-idle" data-i18n="idle.waiting">Waiting to deploy. Connect, add files, then run it.</p>
+          </div>
+        </aside>
+      </div>
+    </section>
+
+    <!-- ========================= HOW IT WORKS ========================= -->
+    <section id="how" class="how reveal">
+      <div class="section-head">
+        <h2 data-i18n="how.h">Three moves to live</h2>
+        <p data-i18n="how.sub">It reads like a chat command and runs like a pipeline.</p>
+      </div>
+      <ol class="flow">
+        <li class="flow-step">
+          <span class="flow-n">01</span>
+          <h3 data-i18n="how.s1.h">Connect</h3>
+          <p data-i18n="how.s1.p">Paste a GitHub token once. It stays on your device and talks only to GitHub.</p>
+        </li>
+        <li class="flow-step">
+          <span class="flow-n">02</span>
+          <h3 data-i18n="how.s2.h">Drop files</h3>
+          <p data-i18n="how.s2.p">Add a single page or a whole folder. Images and fonts come along for the ride.</p>
+        </li>
+        <li class="flow-step">
+          <span class="flow-n">03</span>
+          <h3 data-i18n="how.s3.h">Deploy</h3>
+          <p data-i18n="how.s3.p">A repo is created, your files are committed, and Pages is switched on. You get a link.</p>
+        </li>
+      </ol>
+    </section>
+
+    <!-- ============================ PRICING ============================ -->
+    <section id="pricing" class="pricing reveal">
+      <div class="section-head">
+        <h2 data-i18n="pricing.h">Go unlimited with Premium</h2>
+        <p id="pricingSub" data-i18n="pricing.sub">Free gives you 3 deploys to try things out. Premium lifts the limit and adds more.</p>
+      </div>
+
+      <div class="plans" id="plans">
+        <!-- Free plan (static) -->
+        <article class="plan plan-free">
+          <div class="plan-head">
+            <h3 class="plan-name" data-i18n="pricing.free.name">Free</h3>
+            <p class="plan-tagline" data-i18n="pricing.free.tagline">To try it out</p>
+          </div>
+          <div class="plan-price">
+            <span class="plan-amount">Rp0</span>
+          </div>
+          <ul class="plan-feats">
+            <li id="freeF1" data-i18n="pricing.free.f1">3 deploys total</li>
+            <li data-i18n="pricing.free.f2">Public repositories</li>
+            <li data-i18n="pricing.free.f3">Deploy log and local history</li>
+          </ul>
+          <button class="btn btn-quiet plan-cta" type="button" disabled data-i18n="pricing.free.cta">Your current plan</button>
+        </article>
+
+        <!-- Premium plan cards are rendered here from live data (ND.ui.renderPlans). -->
+      </div>
+
+      <p class="pricing-note" data-i18n="pricing.note">No card needed. Pay by bank transfer, and our team activates your Premium after checking your proof.</p>
+    </section>
+
+    <!-- ===================== GUIDE (TOKEN TUTORIAL) ===================== -->
+    <section id="guide" class="guide reveal">
+      <div class="section-head">
+        <h2 data-i18n="guide.h">Connect to GitHub in four steps</h2>
+        <p data-i18n="guide.sub">A token is like a temporary key that lets Noisy Deploy create repos for you. Here is how to make one.</p>
+      </div>
+
+      <ol class="guide-steps">
+        <li class="guide-step">
+          <span class="guide-n">1</span>
+          <div class="guide-body">
+            <h3 data-i18n="guide.s1.h">Open the token page</h3>
+            <p data-i18n-html="guide.s1.p">Go to <a href="https://github.com/settings/tokens/new?description=Noisy%20Deploy&scopes=repo" target="_blank" rel="noopener noreferrer">GitHub → Settings → Tokens (classic)</a> and click <b>Generate new token (classic)</b>.</p>
+          </div>
+        </li>
+        <li class="guide-step">
+          <span class="guide-n">2</span>
+          <div class="guide-body">
+            <h3 data-i18n="guide.s2.h">Name it and set an expiry</h3>
+            <p data-i18n-html="guide.s2.p">Type a note like “Noisy Deploy” so you remember what it is for, then pick an expiry date that suits you.</p>
+          </div>
+        </li>
+        <li class="guide-step">
+          <span class="guide-n">3</span>
+          <div class="guide-body">
+            <h3 data-i18n-html="guide.s3.h">Tick the <code>repo</code> scope</h3>
+            <p data-i18n-html="guide.s3.p">This is the important one. Check the box labelled <b>repo</b>. That single permission lets the tool create your repository, upload files, and turn on Pages.</p>
+            <p class="guide-callout" data-i18n-html="guide.s3.note">
+              <svg class="i i-sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16v-4m0-4h.01M12 22a10 10 0 100-20 10 10 0 000 20z"/></svg>
+              <span>Only the <code>repo</code> scope is needed. You can leave everything else unchecked.</span>
+            </p>
+          </div>
+        </li>
+        <li class="guide-step">
+          <span class="guide-n">4</span>
+          <div class="guide-body">
+            <h3 data-i18n="guide.s4.h">Generate, copy, paste</h3>
+            <p data-i18n-html="guide.s4.p">Click <b>Generate token</b>, copy the string that appears (GitHub shows it only once), then paste it into the Connect step above.</p>
+          </div>
+        </li>
+      </ol>
+
+      <div class="guide-foot">
+        <a class="btn btn-primary" href="https://github.com/settings/tokens/new?description=Noisy%20Deploy&scopes=repo" target="_blank" rel="noopener noreferrer">
+          <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 7h3a2 2 0 012 2v9a2 2 0 01-2 2H6a2 2 0 01-2-2V9a2 2 0 012-2h3"/><path d="M12 3v11m0 0l-3-3m3 3l3-3"/></svg>
+          <span data-i18n="guide.cta">Create my token</span>
+        </a>
+        <p class="guide-safety" data-i18n="guide.safety">Noisy Deploy never sends your token anywhere except GitHub, and you can revoke it any time from the same settings page.</p>
+      </div>
+    </section>
+
+    <!-- ============================ FAQ ============================ -->
+    <section id="faq" class="faq reveal">
+      <div class="section-head">
+        <h2 data-i18n="faq.h">Questions worth asking</h2>
+      </div>
+      <div class="accordion" id="accordion">
+        <details>
+          <summary><span data-i18n="faq.q1">How do I get a GitHub token?</span><span class="acc-ico" aria-hidden="true"></span></summary>
+          <div class="acc-body">
+            <p data-i18n-html="faq.a1">See the <a href="#guide">four-step guide</a> above, or <a href="https://github.com/settings/tokens/new?description=Noisy%20Deploy&scopes=repo" target="_blank" rel="noopener noreferrer">create a token</a> now. You only need the <code>repo</code> scope.</p>
+          </div>
+        </details>
+        <details>
+          <summary><span data-i18n="faq.q2">Is my token safe here?</span><span class="acc-ico" aria-hidden="true"></span></summary>
+          <div class="acc-body">
+            <p data-i18n-html="faq.a2">There is no server in this picture. Your token is kept in your browser's <code>localStorage</code> and is only ever sent to <code>api.github.com</code> over HTTPS. Press <b>Forget</b> to erase it, and you can <a href="https://github.com/settings/tokens" target="_blank" rel="noopener noreferrer">revoke it on GitHub</a> at any time.</p>
+          </div>
+        </details>
+        <details>
+          <summary><span data-i18n="faq.q3">Public or private repository?</span><span class="acc-ico" aria-hidden="true"></span></summary>
+          <div class="acc-body">
+            <p data-i18n="faq.a3">GitHub Pages needs a public repository on the free plan, so Noisy Deploy creates public repos by default. Anything you deploy will be publicly readable.</p>
+          </div>
+        </details>
+        <details>
+          <summary><span data-i18n="faq.q4">What actually gets deployed?</span><span class="acc-ico" aria-hidden="true"></span></summary>
+          <div class="acc-body">
+            <p data-i18n-html="faq.a4">Your files, exactly as they are. If there is an <code>index.html</code> at the top level, it becomes the homepage. Folder structure is preserved, so <code>about/index.html</code> becomes <code>/about/</code>.</p>
+          </div>
+        </details>
+        <details>
+          <summary><span data-i18n="faq.q5">Can I redeploy the same project?</span><span class="acc-ico" aria-hidden="true"></span></summary>
+          <div class="acc-body">
+            <p data-i18n="faq.a5">Yes. Use the same project name and Noisy Deploy commits over the existing repository instead of failing. The first build can take a minute; later ones are quick.</p>
+          </div>
+        </details>
+      </div>
+    </section>
+
+    <!-- ============================ TEAM ============================ -->
+    <section id="team" class="team reveal">
+      <div class="section-head">
+        <h2 data-i18n="team.h">The people behind it</h2>
+        <p data-i18n="team.sub">Built and looked after by a small crew. Say hi on Telegram.</p>
+      </div>
+
+      <div class="team-grid">
+        <article class="team-card">
+          <div class="team-photo">
+            <img src="assets/dev-noisy.png" alt="Noisy, developer" width="112" height="112" loading="lazy" />
+          </div>
+          <h3 class="team-name">Noisy</h3>
+          <p class="team-role" data-i18n="team.dev.role">Developer</p>
+          <a class="team-tele" href="https://t.me/noisy05" target="_blank" rel="noopener noreferrer"
+             data-i18n-attr="aria-label:team.telegram">
+            <svg class="i i-sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M21.5 4.5L2.5 12l6 2m13-9.5l-3 15-6-3.5m9-11.5L8.5 14m0 0v5l3.5-3.5"/></svg>
+            <span>@noisy05</span>
+          </a>
+        </article>
+
+        <article class="team-card">
+          <div class="team-photo">
+            <img src="assets/support-bloodskill.png" alt="BloodSkill, support system" width="112" height="112" loading="lazy" />
+          </div>
+          <h3 class="team-name">BloodSkill</h3>
+          <p class="team-role" data-i18n="team.support.role">Support System</p>
+          <a class="team-tele" href="https://t.me/bloodskil2" target="_blank" rel="noopener noreferrer"
+             data-i18n-attr="aria-label:team.telegram">
+            <svg class="i i-sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M21.5 4.5L2.5 12l6 2m13-9.5l-3 15-6-3.5m9-11.5L8.5 14m0 0v5l3.5-3.5"/></svg>
+            <span>@bloodskil2</span>
+          </a>
+        </article>
+      </div>
+    </section>
+  </main>
+
+  <!-- ============================ FOOTER ============================ -->
+  <footer class="foot">
+    <div class="foot-inner">
+      <div class="foot-brand">
+        <span class="brand-name">Noisy<span class="brand-dim">Deploy</span></span>
+        <p data-i18n="foot.tagline">Ship static sites to GitHub Pages without leaving the browser.</p>
+      </div>
+      <div class="foot-links">
+        <a href="#deploy" data-scroll data-i18n="foot.deploy">Deploy</a>
+        <a href="#how" data-i18n="foot.how">How it works</a>
+        <a href="#pricing" data-i18n="foot.pricing">Pricing</a>
+        <a href="#guide" data-i18n="foot.guide">Token guide</a>
+        <a href="#faq" data-i18n="foot.faq">FAQ</a>
+        <a href="#team" data-i18n="foot.team">Team</a>
+        <a href="https://github.com/settings/tokens" target="_blank" rel="noopener noreferrer" data-i18n="foot.tokens">Manage tokens</a>
+        <a href="terms.html" data-i18n="foot.terms">Terms of Service</a>
+        <a href="privacy.html" data-i18n="foot.privacy">Privacy Policy</a>
+      </div>
+    </div>
+    <p class="foot-fine" data-i18n="foot.fine">
+      Not affiliated with GitHub. Reimagined from a Telegram deploy bot into something you can use in a tab.
+    </p>
+  </footer>
+
+  <div class="toasts" id="toasts" aria-live="polite" aria-atomic="false"></div>
+
+  <!-- ===================== UPGRADE / PAYMENT MODAL ===================== -->
+  <div class="modal" id="payModal" hidden>
+    <div class="modal-backdrop" data-close-pay></div>
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="payTitle">
+      <button class="modal-x" type="button" data-close-pay
+              data-i18n-attr="aria-label:pay.close" aria-label="Close">
+        <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+
+      <h3 class="modal-h" id="payTitle" data-i18n="pay.title">Upgrade to Premium</h3>
+      <p class="modal-intro" data-i18n="pay.intro">Transfer the amount, upload your proof, then confirm on Telegram. We activate Premium once we have checked it.</p>
+
+      <p class="pay-need-login" id="payNeedLogin" data-i18n="pay.needLogin" hidden>Connect your GitHub first so we can attach Premium to your account.</p>
+
+      <!-- Step 1: transfer details -->
+      <div class="pay-step">
+        <h4 class="pay-step-h" data-i18n="pay.step1">1. Transfer</h4>
+        <dl class="pay-rows">
+          <div class="pay-row">
+            <dt data-i18n="pay.plan">Plan</dt>
+            <dd><span id="payPlanName">Premium</span></dd>
+          </div>
+          <div class="pay-row">
+            <dt data-i18n="pay.amount">Amount</dt>
+            <dd><span id="payAmount">Rp30.000</span>
+              <button class="pay-copy" type="button" data-copy="payAmount" data-i18n="pay.copy">Copy</button></dd>
+          </div>
+        </dl>
+        <p class="pay-hint" data-i18n="pay.pickMethod">Choose how you want to pay:</p>
+        <div class="pay-methods" id="payMethods"></div>
+        <div class="pay-method-details" id="payMethodDetails"></div>
+      </div>
+
+      <!-- Step 2: proof upload -->
+      <div class="pay-step">
+        <h4 class="pay-step-h" data-i18n="pay.step2">2. Upload your proof</h4>
+        <p class="pay-hint" data-i18n="pay.proofHint">A screenshot of the transfer. Image only, up to 5 MB.</p>
+        <div class="pay-upload">
+          <button class="btn btn-ghost btn-sm" id="btnChooseProof" type="button" data-i18n="pay.chooseProof">Choose image</button>
+          <span class="pay-proof-name" id="payProofName"></span>
+          <input id="inputProof" type="file" accept="image/*" hidden />
+        </div>
+      </div>
+
+      <!-- Step 3: confirm on Telegram -->
+      <div class="pay-step">
+        <h4 class="pay-step-h" data-i18n="pay.step3">3. Confirm on Telegram</h4>
+        <p class="pay-hint" data-i18n="pay.confirmHint">Send your proof to us on Telegram so we can activate Premium.</p>
+        <div class="pay-confirm">
+          <button class="btn btn-primary btn-sm" id="btnPayDev" type="button">
+            <span class="btn-label" data-i18n="pay.viaDev">Confirm with Developer</span>
+            <span class="spinner" hidden></span>
+          </button>
+          <button class="btn btn-ghost btn-sm" id="btnPaySupport" type="button">
+            <span class="btn-label" data-i18n="pay.viaSupport">Confirm with Support</span>
+            <span class="spinner" hidden></span>
+          </button>
+        </div>
+      </div>
+
+      <p class="pay-legal" data-i18n-html="pay.legal">
+        By upgrading you agree to our <a href="terms.html">Terms of Service</a> and <a href="privacy.html">Privacy Policy</a>.
+      </p>
+    </div>
+  </div>
+
+  <!-- Scripts load in dependency order; classic scripts so a double-click on
+       index.html works too (no build step, no module server required).
+       supabase.js + quota.js sit before ui/app; they no-op if keys are blank. -->
+  <script src="js/config.js"></script>
+  <script src="js/i18n.js"></script>
+  <script src="js/fx.js"></script>
+  <script src="js/github.js"></script>
+  <script src="js/supabase.js"></script>
+  <script src="js/quota.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/app.js"></script>
+  <script>
+    // Dismiss the intro splash after a short beat, then remember it for this tab.
+    (function () {
+      var pre = document.getElementById("preloader");
+      if (!pre) return;
+      if (document.documentElement.classList.contains("nd-nosplash")) { pre.remove(); return; }
+      var reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      var hold = reduce ? 350 : 1500;
+      function done() {
+        pre.classList.add("is-out");
+        try { sessionStorage.setItem("nd.splashShown", "1"); } catch (e) {}
+        setTimeout(function () { if (pre && pre.parentNode) pre.remove(); }, 600);
+      }
+      window.setTimeout(done, hold);
+    })();
+  </script>
+</body>
+</html>

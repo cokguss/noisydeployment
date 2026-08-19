@@ -1,0 +1,231 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <script>
+    document.documentElement.classList.add("js");
+    // Intro splash shows once per tab session (survives refresh, fresh on a new tab).
+    try { if (sessionStorage.getItem("nd.admSplashShown")) document.documentElement.classList.add("nd-nosplash"); } catch (e) {}
+  </script>
+  <title>Noisy Deploy: Admin</title>
+  <meta name="color-scheme" content="dark" />
+  <meta name="theme-color" content="#05060a" />
+  <link rel="icon" type="image/svg+xml" href="../assets/favicon.svg" />
+  <link rel="stylesheet" href="../css/style.css" />
+  <link rel="stylesheet" href="../css/animations.css" />
+</head>
+<body class="admin">
+  <!-- Intro splash: shows once per tab session (see head + footer scripts) -->
+  <div class="preloader" id="preloader" aria-hidden="true">
+    <div class="preloader-inner">
+      <svg class="preloader-mark" viewBox="0 0 64 64" width="72" height="72" aria-hidden="true">
+        <rect width="64" height="64" rx="16" fill="#0a0d16"/>
+        <g fill="none" stroke="#22d3ee" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M20 33 L32 21 L44 33"/><path d="M20 44 L32 32 L44 44"/>
+        </g>
+      </svg>
+      <span class="preloader-name">Welcome Noisy X Blood</span>
+      <span class="preloader-bar" aria-hidden="true"><i></i></span>
+    </div>
+  </div>
+
+  <div class="bg" aria-hidden="true">
+    <span class="bg-orb bg-orb-1"></span>
+    <span class="bg-orb bg-orb-2"></span>
+    <span class="bg-orb bg-orb-3"></span>
+  </div>
+
+  <noscript>
+    <div style="background:#fbbf24;color:#04121a;padding:12px 16px;text-align:center;font:600 14px/1.5 system-ui,sans-serif">
+      The admin dashboard needs JavaScript.
+    </div>
+  </noscript>
+
+  <!-- ============================ LOGIN ============================ -->
+  <section class="admin-login" id="loginView">
+    <div class="admin-login-card">
+      <a class="brand" href="../index.html" aria-label="Noisy Deploy home">
+        <svg class="brand-mark" viewBox="0 0 64 64" width="26" height="26" aria-hidden="true">
+          <rect width="64" height="64" rx="16" fill="#0a0d16"/>
+          <g fill="none" stroke="#22d3ee" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M20 33 L32 21 L44 33"/><path d="M20 44 L32 32 L44 44"/>
+          </g>
+        </svg>
+        <span class="brand-name">Noisy<span class="brand-dim">Deploy</span></span>
+      </a>
+      <h1 class="admin-login-h">Admin dashboard</h1>
+      <p class="admin-login-p">Sign in with your admin account.</p>
+
+      <div class="field">
+        <label for="email">Email</label>
+        <input id="email" type="email" autocomplete="username" spellcheck="false" placeholder="you@example.com" />
+      </div>
+      <div class="field">
+        <label for="password">Password</label>
+        <input id="password" type="password" autocomplete="current-password" placeholder="••••••••" />
+      </div>
+      <p class="inline-error" id="loginError" role="alert" hidden></p>
+      <button class="btn btn-primary" id="btnLogin" type="button" style="margin-top:16px;width:100%">
+        <span class="btn-label">Sign in</span>
+        <span class="spinner" hidden></span>
+      </button>
+      <p class="admin-config-warn" id="configWarn" hidden>
+        Supabase is not configured. Set <code>SUPABASE_URL</code> and <code>SUPABASE_ANON_KEY</code>
+        in <code>js/config.js</code> first.
+      </p>
+    </div>
+  </section>
+
+  <!-- ============================ DASHBOARD ============================ -->
+  <div class="admin-shell" id="dashView" hidden>
+    <!-- ---- left sidebar: brand + vertical nav + sign out ---- -->
+    <aside class="admin-sidebar">
+      <a class="brand" href="../index.html" aria-label="Noisy Deploy home">
+        <svg class="brand-mark" viewBox="0 0 64 64" width="24" height="24" aria-hidden="true">
+          <rect width="64" height="64" rx="16" fill="#0a0d16"/>
+          <g fill="none" stroke="#22d3ee" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M20 33 L32 21 L44 33"/><path d="M20 44 L32 32 L44 44"/>
+          </g>
+        </svg>
+        <span class="brand-name">Noisy<span class="brand-dim">Deploy</span> <span class="admin-tag">admin</span></span>
+      </a>
+
+      <nav class="admin-nav" id="adminTabs" aria-label="Sections">
+        <button class="admin-tab is-active" data-tab="payments" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="5" width="19" height="14" rx="2.5"/><path d="M2.5 9.5h19"/></svg>
+          <span>Payments</span><span class="tab-badge" id="pendingBadge" hidden>0</span>
+        </button>
+        <button class="admin-tab" data-tab="users" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M5 19c0-3.3 3.1-5.5 7-5.5s7 2.2 7 5.5"/></svg>
+          <span>Users</span>
+        </button>
+        <button class="admin-tab" data-tab="products" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.6 3H6a3 3 0 0 0-3 3v6.6a2 2 0 0 0 .6 1.4l7 7a2 2 0 0 0 2.8 0l5.6-5.6a2 2 0 0 0 0-2.8l-7-7A2 2 0 0 0 12.6 3Z"/><circle cx="8" cy="8" r="1.2" fill="currentColor" stroke="none"/></svg>
+          <span>Pricing</span>
+        </button>
+        <button class="admin-tab" data-tab="announcements" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 10v4a1 1 0 0 0 1 1h2l3.6 3.4a1 1 0 0 0 1.4-.7V6.3a1 1 0 0 0-1.4-.7L7 9H5a1 1 0 0 0-1 1Z"/><path d="M16 9.5a4 4 0 0 1 0 5"/></svg>
+          <span>Announcements</span>
+        </button>
+        <button class="admin-tab" data-tab="settings" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.6v2.6M12 18.8v2.6M2.6 12h2.6M18.8 12h2.6M5.2 5.2l1.9 1.9M16.9 16.9l1.9 1.9M18.8 5.2l-1.9 1.9M7.1 16.9l-1.9 1.9"/></svg>
+          <span>Settings</span>
+        </button>
+      </nav>
+
+      <div class="admin-sidebar-foot">
+        <button class="btn btn-ghost btn-sm" id="btnLogout" type="button" style="width:100%">Sign out</button>
+      </div>
+    </aside>
+
+    <!-- ---- content column: top bar + panels ---- -->
+    <div class="admin-content">
+      <header class="admin-topbar">
+        <div class="admin-hello">
+          <span>Welcome back</span>
+          <strong id="adminWho"></strong>
+        </div>
+        <button class="btn btn-quiet btn-sm" id="btnRefresh" type="button">Refresh</button>
+      </header>
+
+      <main class="admin-main">
+        <!-- ---- Payments ---- -->
+        <section class="admin-panel" data-panel="payments">
+          <div class="admin-panel-head">
+            <h2>Payments</h2>
+            <label class="admin-filter">
+              <input type="checkbox" id="pendingOnly" checked /> Pending only
+            </label>
+          </div>
+          <div class="admin-list" id="paymentsList"><p class="admin-empty">Loading…</p></div>
+        </section>
+
+        <!-- ---- Users ---- -->
+        <section class="admin-panel" data-panel="users" hidden>
+          <div class="admin-panel-head">
+            <h2>Users</h2>
+            <div class="admin-search">
+              <input type="text" id="userSearch" placeholder="Search GitHub login…" spellcheck="false" />
+              <button class="btn btn-ghost btn-sm" id="btnUserSearch" type="button">Search</button>
+            </div>
+          </div>
+          <p class="admin-hint">Set a plan, extend Premium, or reset the free deploy counter. Developer never expires.</p>
+          <div class="admin-list" id="usersList"><p class="admin-empty">Search for a GitHub login to manage a user.</p></div>
+        </section>
+
+        <!-- ---- Products / Pricing ---- -->
+        <section class="admin-panel" data-panel="products" hidden>
+          <div class="admin-panel-head"><h2>Pricing</h2></div>
+          <p class="admin-hint">Edit the plans shown on the site. Changes appear live via realtime. One feature per line. Period accepts day, week, month, quarter or year (controls how many days Premium is granted on approval).</p>
+          <div class="admin-list" id="productsList"><p class="admin-empty">Loading…</p></div>
+
+          <div class="admin-panel-head" style="margin-top:28px"><h2>Payment methods</h2></div>
+          <p class="admin-hint">Banks, e-wallets or QRIS buyers can pay with. Each can carry an optional QR image. Shown live in the pay modal.</p>
+          <div class="admin-list" id="methodsList"><p class="admin-empty">Loading…</p></div>
+        </section>
+
+        <!-- ---- Announcements ---- -->
+        <section class="admin-panel" data-panel="announcements" hidden>
+          <div class="admin-panel-head"><h2>Announcements</h2></div>
+          <div class="admin-card admin-form">
+            <div class="field">
+              <label for="annMsg">New announcement</label>
+              <input type="text" id="annMsg" placeholder="e.g. Weekend sale: Premium 20% off" />
+            </div>
+            <div class="admin-form-row">
+              <label class="admin-inline">Level
+                <select id="annLevel">
+                  <option value="info">info</option>
+                  <option value="warn">warn</option>
+                  <option value="success">success</option>
+                </select>
+              </label>
+              <button class="btn btn-primary btn-sm" id="btnAnnCreate" type="button">Publish</button>
+            </div>
+          </div>
+          <div class="admin-list" id="annList"><p class="admin-empty">Loading…</p></div>
+        </section>
+
+        <!-- ---- Settings ---- -->
+        <section class="admin-panel" data-panel="settings" hidden>
+          <div class="admin-panel-head"><h2>Settings</h2></div>
+          <p class="admin-hint">Bank and Telegram details shown on the site, plus the free deploy limit.</p>
+          <div class="admin-card admin-form" id="settingsForm">
+            <div class="field"><label for="setBankName">Bank name</label><input type="text" id="setBankName" /></div>
+            <div class="field"><label for="setBankAccount">Account number</label><input type="text" id="setBankAccount" /></div>
+            <div class="field"><label for="setBankHolder">Account holder</label><input type="text" id="setBankHolder" /></div>
+            <div class="field"><label for="setTeleDev">Telegram (developer)</label><input type="text" id="setTeleDev" /></div>
+            <div class="field"><label for="setTeleSupport">Telegram (support)</label><input type="text" id="setTeleSupport" /></div>
+            <div class="field"><label for="setFreeLimit">Free deploy limit</label><input type="text" inputmode="numeric" id="setFreeLimit" /></div>
+            <button class="btn btn-primary" id="btnSaveSettings" type="button" style="margin-top:8px">Save settings</button>
+          </div>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <div class="toasts" id="toasts" aria-live="polite" aria-atomic="false"></div>
+
+  <!-- config.js -> ND.config (Supabase keys); supabase.js -> ND.db; admin.js -> logic -->
+  <script src="../js/config.js"></script>
+  <script src="../js/supabase.js"></script>
+  <script src="../js/admin.js"></script>
+  <script>
+    // Dismiss the intro splash after a short beat, then remember it for this tab.
+    (function () {
+      var pre = document.getElementById("preloader");
+      if (!pre) return;
+      if (document.documentElement.classList.contains("nd-nosplash")) { pre.remove(); return; }
+      var reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      var hold = reduce ? 350 : 1500;
+      window.setTimeout(function () {
+        pre.classList.add("is-out");
+        try { sessionStorage.setItem("nd.admSplashShown", "1"); } catch (e) {}
+        setTimeout(function () { if (pre && pre.parentNode) pre.remove(); }, 600);
+      }, hold);
+    })();
+  </script>
+</body>
+</html>

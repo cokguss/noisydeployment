@@ -1,0 +1,128 @@
+/* ============================================================================
+   Noisy Deploy — animations.css
+   Motive for each: brand identity (glitch wordmark), feedback (spinner, success
+   pulse, log cursor), ambient life (drifting neon orbs), and hierarchy (scroll
+   reveal). Everything here collapses to static under prefers-reduced-motion
+   (see the block at the bottom).
+   ==========================================================================*/
+
+/* Scroll reveal — sections lift in as they enter view (motive: hierarchy).
+   Gated behind .js so that if scripts fail, content stays visible. */
+.js .reveal {
+  opacity: 0;
+  transform: translateY(22px);
+  transition: opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1),
+              transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: opacity, transform;
+}
+.js .reveal.in { opacity: 1; transform: none; }
+
+/* Neon mesh orbs drift slowly on independent timings — the page's calm ambient
+   motion (see .bg / .bg-orb). Big, soft, and slow so it reads as gentle. */
+@keyframes drift-1 {
+  0%   { transform: translate(0, 0) scale(1); }
+  100% { transform: translate(6vw, 4vh) scale(1.08); }
+}
+@keyframes drift-2 {
+  0%   { transform: translate(0, 0) scale(1); }
+  100% { transform: translate(-5vw, -5vh) scale(1.1); }
+}
+@keyframes drift-3 {
+  0%   { transform: translate(-3vw, 2vh) scale(1); }
+  100% { transform: translate(4vw, -4vh) scale(0.94); }
+}
+
+/* Wordmark glitch — RGB split flicker (motive: brand identity, the "noise") */
+.wordmark::before,
+.wordmark::after {
+  content: attr(data-text);
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  clip-path: inset(0 0 0 0);
+}
+.wordmark::before { color: var(--accent); }
+.wordmark::after  { color: var(--violet); }
+
+.wordmark {
+  animation: wm-settle 900ms ease-out both;
+}
+.wordmark::before { animation: glitch-a 5.5s infinite steps(1); opacity: 0; }
+.wordmark::after  { animation: glitch-b 5.5s infinite steps(1); opacity: 0; }
+
+@keyframes wm-settle {
+  0%   { opacity: 0; filter: blur(6px); transform: translateY(6px); letter-spacing: 0.06em; }
+  100% { opacity: 1; filter: blur(0);   transform: none;            letter-spacing: -0.045em; }
+}
+/* short bursts, mostly hidden — reads as an occasional signal glitch */
+@keyframes glitch-a {
+  0%, 92%, 100% { opacity: 0; transform: none; clip-path: inset(0 0 0 0); }
+  93% { opacity: 0.7; transform: translate(-2px, -1px); clip-path: inset(0 0 62% 0); }
+  96% { opacity: 0.7; transform: translate(2px, 1px);   clip-path: inset(58% 0 0 0); }
+}
+@keyframes glitch-b {
+  0%, 92%, 100% { opacity: 0; transform: none; clip-path: inset(0 0 0 0); }
+  94% { opacity: 0.6; transform: translate(2px, 1px);   clip-path: inset(0 0 55% 0); }
+  97% { opacity: 0.6; transform: translate(-2px, -1px); clip-path: inset(50% 0 0 0); }
+}
+
+/* Blinking cursor at the end of the live log (motive: liveness feedback) */
+.log.running .ln:last-child::after {
+  content: "▋";
+  color: var(--accent);
+  animation: blink 1s steps(1) infinite;
+  margin-left: 2px;
+}
+@keyframes blink { 50% { opacity: 0; } }
+
+/* Spinner (motive: loading feedback) */
+.spinner { animation: spin 0.7s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Success pulse ring (motive: state-transition feedback) */
+.success-mark.pop { animation: pop 0.5s cubic-bezier(0.16, 1, 0.3, 1) both; }
+@keyframes pop {
+  0%   { transform: scale(0.4); opacity: 0; }
+  60%  { transform: scale(1.12); }
+  100% { transform: scale(1); opacity: 1; }
+}
+.success-mark::after {
+  content: ""; position: absolute; inset: -6px; border-radius: 50%;
+  border: 2px solid var(--ok);
+}
+.success-mark.pop::after { animation: ring 0.9s ease-out both; }
+@keyframes ring {
+  0%   { transform: scale(0.7); opacity: 0.8; }
+  100% { transform: scale(1.7); opacity: 0; }
+}
+
+/* Toast entrance */
+.toast { animation: toast-in 0.35s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.toast.leaving { animation: toast-out 0.25s ease-in forwards; }
+@keyframes toast-in  { from { opacity: 0; transform: translateY(10px) scale(0.98); } }
+@keyframes toast-out { to   { opacity: 0; transform: translateY(6px)  scale(0.98); } }
+
+/* Deploy button gets a slow shimmer while a deploy is in flight */
+.btn-deploy.busy {
+  background-size: 200% 100%;
+  background-image: linear-gradient(110deg, var(--accent) 30%, #7defff 50%, var(--accent) 70%);
+  animation: shimmer 1.3s linear infinite;
+}
+@keyframes shimmer { to { background-position: -200% 0; } }
+
+/* File row slide-in */
+.file-row { animation: row-in 0.28s ease both; }
+@keyframes row-in { from { opacity: 0; transform: translateX(-8px); } }
+
+/* =========================== REDUCED MOTION =========================== */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+  .js .reveal { opacity: 1; transform: none; }
+  .wordmark::before, .wordmark::after { display: none; }
+  .log.running .ln:last-child::after { content: ""; }
+  .spinner { animation: none; }
+}
