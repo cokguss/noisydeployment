@@ -1158,7 +1158,7 @@ body.admin { display: block; }
 
   /* admin: sidebar folds into a top strip. Brand + logout on one row,
      section tabs scroll horizontally on their own full-width row below. */
-  .admin-shell { grid-template-columns: 1fr; }
+  .admin-shell { grid-template-columns: 1fr; grid-template-rows: auto 1fr; align-content: start; }
   .admin-sidebar {
     position: sticky; top: 0; height: auto; z-index: 60;
     flex-direction: row; flex-wrap: wrap; align-items: center; gap: 10px 12px;
@@ -1173,7 +1173,7 @@ body.admin { display: block; }
     min-width: 0; overflow-x: auto; gap: 6px;
     padding-bottom: 2px; -webkit-overflow-scrolling: touch;
   }
-  .admin-tab { white-space: nowrap; flex: none; padding: 9px 13px; }
+  .admin-tab { width: auto; white-space: nowrap; flex: none; padding: 9px 13px; }
   .admin-tab span:first-of-type { flex: none; }
   /* avoid a second sticky layer overlapping the folded sidebar strip */
   .admin-topbar { position: static; }
