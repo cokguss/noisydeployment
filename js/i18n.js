@@ -183,6 +183,8 @@
       "err.nameProject": "Give your project a name.",
       "err.addFile": "Add at least one file first.",
       "err.noIndex": "No index.html found at the top level. GitHub Pages needs one, or the site URL shows a 404. Add an index.html, or press Deploy again to publish anyway.",
+      "err.unbuilt": "This looks like a raw {fw} project that hasn't been built. Browsers can't run source files like src/main.jsx, so the page loads blank. Fix it in your {fw} project: set base to your repo name in vite.config (e.g. base: '/repo-name/'), run npm run build, then deploy the contents of the dist/ folder here — not the project folder. Or press Deploy again to publish it as-is.",
+      "err.unbuiltToast": "Looks like an un-built {fw} project. Deploy the dist/ folder instead.",
       "err.deployFailed": "Deploy failed.",
 
       /* dynamic: deploy pipeline log + GitHub errors */
@@ -499,6 +501,8 @@
       "err.nameProject": "Beri nama proyekmu.",
       "err.addFile": "Tambahkan minimal satu file dulu.",
       "err.noIndex": "Tidak ada index.html di tingkat teratas. GitHub Pages membutuhkannya, kalau tidak URL situs akan menampilkan 404. Tambahkan index.html, atau tekan Deploy lagi untuk tetap menerbitkannya.",
+      "err.unbuilt": "Ini sepertinya proyek {fw} mentah yang belum di-build. Browser tidak bisa menjalankan file source seperti src/main.jsx, jadi halaman tampil kosong. Perbaiki di proyek {fw}-mu: set base ke nama repo di vite.config (mis. base: '/nama-repo/'), jalankan npm run build, lalu deploy isi folder dist/ ke sini — bukan folder proyeknya. Atau tekan Deploy lagi untuk tetap menerbitkannya apa adanya.",
+      "err.unbuiltToast": "Sepertinya proyek {fw} yang belum di-build. Deploy folder dist/-nya.",
       "err.deployFailed": "Deploy gagal.",
 
       /* dynamic: deploy pipeline log + GitHub errors */

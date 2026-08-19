@@ -49,6 +49,66 @@
     return flagged;
   }
 
+  // Frameworks whose source can't run in the browser without a build step. If a
+  // dependency name matches, the upload is almost certainly raw source, not the
+  // built dist/ output — deploying it gives a blank white page.
+  const FRAMEWORK_DEPS = [
+    { re: /^react(-dom)?$/, name: "React" },
+    { re: /^vue$/, name: "Vue" },
+    { re: /^svelte$/, name: "Svelte" },
+    { re: /^@angular\/core$/, name: "Angular" },
+    { re: /^next$/, name: "Next.js" },
+    { re: /^nuxt$/, name: "Nuxt" },
+    { re: /^solid-js$/, name: "SolidJS" },
+    { re: /^(vite|@vitejs\/plugin-react|parcel)$/, name: "Vite" },
+  ];
+  // Raw component source that never ships to a static host after a build.
+  const SOURCE_FILE = /(^|\/)src\/.*\.(jsx|tsx|vue|svelte)$/i;
+  // A built page references bundled assets; raw source points at /src/*.
+  const BUILT_ASSET = /(^|\/)assets\/[^/]+\.(js|css)$/i;
+
+  // Detect an un-built frontend project so we can warn before deploying blank
+  // source. Returns { framework } or null. Mirrors findSecretFiles' async read.
+  async function detectUnbuiltFrontend(entries) {
+    let framework = null;
+
+    // 1) package.json deps are the strongest signal.
+    const pkg = entries.find((e) => e.path.toLowerCase() === "package.json");
+    if (pkg && pkg.file.size <= SCAN_MAX) {
+      try {
+        const data = JSON.parse(await pkg.file.text());
+        const deps = Object.assign({}, data.dependencies, data.devDependencies);
+        const names = Object.keys(deps || {});
+        for (const d of FRAMEWORK_DEPS) {
+          if (names.some((n) => d.re.test(n))) { framework = d.name; break; }
+        }
+      } catch (_) { /* not valid JSON — ignore */ }
+    }
+
+    // 2) Raw component source (src/*.jsx|tsx|vue|svelte) also implies a build.
+    const hasSource = entries.some((e) => SOURCE_FILE.test(e.path));
+
+    // 3) index.html that loads /src/* as a module is the Vite dev entry, not a build.
+    let devEntry = false;
+    const idx = entries.find((e) => e.path.toLowerCase() === "index.html");
+    if (idx && idx.file.size <= SCAN_MAX) {
+      try {
+        const html = await idx.file.text();
+        devEntry = /<script[^>]+type=["']module["'][^>]*src=["']\/?src\//i.test(html) ||
+                   /<script[^>]+src=["']\/src\//i.test(html);
+      } catch (_) { /* ignore */ }
+    }
+
+    if (!framework && !hasSource && !devEntry) return null;
+
+    // If a bundled asset is present the project already looks built — don't warn.
+    const hasBuiltAsset = entries.some((e) => BUILT_ASSET.test(e.path));
+    if (hasBuiltAsset && !devEntry) return null;
+
+    // Only source markers, no framework name? Still worth flagging generically.
+    return { framework: framework || "frontend" };
+  }
+
 
   function collectFromInput(fileList, useRelative) {
     const out = [];
@@ -144,6 +204,8 @@
   }
   function clearFiles() {
     state.files = [];
+    state._noIndexOk = false;
+    state._unbuiltOk = false;
     ui.renderFiles(state.files);
     ui.el.previewWrap.hidden = true;
   }
@@ -240,6 +302,17 @@
       state._noIndexOk = true;
       ui.error("config", ND.t("err.noIndex"));
       ui.toast(ND.t("err.noIndex"), "err");
+      goto("files");
+      return;
+    }
+
+    // Raw React/Vue/Svelte source can't run in the browser without a build, so it
+    // deploys to a blank page. Warn (once) with fix steps, then let it through.
+    const unbuilt = await detectUnbuiltFrontend(state.files);
+    if (unbuilt && !state._unbuiltOk) {
+      state._unbuiltOk = true;
+      ui.error("config", ND.t("err.unbuilt", { fw: unbuilt.framework }));
+      ui.toast(ND.t("err.unbuiltToast", { fw: unbuilt.framework }), "err");
       goto("files");
       return;
     }
