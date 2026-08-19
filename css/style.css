@@ -168,6 +168,8 @@ code { font-family: var(--mono); font-size: 0.9em; color: var(--accent); }
 .nav-toggle .i { width: 22px; height: 22px; stroke: currentColor; fill: none; stroke-width: 2; }
 .nav-toggle:hover { border-color: var(--accent); }
 .nav-status { margin-left: auto; display: flex; align-items: center; gap: 12px; }
+/* Wrapper is transparent on desktop so links + status lay out inline in .nav-inner. */
+.nav-menu { display: contents; }
 
 .rate {
   font-family: var(--mono);
@@ -1154,36 +1156,55 @@ body.admin { display: block; }
   .flow { grid-template-columns: 1fr; }
   .flow::before { display: none; }
 
-  /* admin: sidebar folds into a top strip, nav scrolls horizontally */
+  /* admin: sidebar folds into a top strip. Brand + logout on one row,
+     section tabs scroll horizontally on their own full-width row below. */
   .admin-shell { grid-template-columns: 1fr; }
   .admin-sidebar {
-    position: static; height: auto;
-    flex-direction: row; align-items: center; gap: 12px;
-    padding: 12px clamp(16px, 4vw, 40px);
+    position: sticky; top: 0; height: auto; z-index: 60;
+    flex-direction: row; flex-wrap: wrap; align-items: center; gap: 10px 12px;
+    padding: 10px clamp(16px, 4vw, 40px);
     border-right: 0; border-bottom: 1px solid var(--brd);
   }
-  .admin-sidebar .brand { margin: 0; flex: none; }
-  .admin-nav { flex-direction: row; overflow-x: auto; gap: 4px; }
-  .admin-tab { white-space: nowrap; }
-  .admin-tab span:first-of-type { flex: none; }
-  .admin-sidebar-foot { margin: 0; padding: 0; border-top: 0; }
+  .admin-sidebar .brand { margin: 0; flex: 1 1 auto; min-width: 0; }
+  .admin-sidebar-foot { order: 1; margin: 0; padding: 0; border-top: 0; }
   .admin-sidebar-foot .btn { width: auto !important; }
+  .admin-nav {
+    order: 2; flex: 1 1 100%; flex-direction: row;
+    min-width: 0; overflow-x: auto; gap: 6px;
+    padding-bottom: 2px; -webkit-overflow-scrolling: touch;
+  }
+  .admin-tab { white-space: nowrap; flex: none; padding: 9px 13px; }
+  .admin-tab span:first-of-type { flex: none; }
+  /* avoid a second sticky layer overlapping the folded sidebar strip */
+  .admin-topbar { position: static; }
 }
 /* Tablet / small: fold section nav into a hamburger dropdown. */
 @media (max-width: 760px) {
-  .nav-inner { position: relative; gap: 10px; }
-  .nav-toggle { display: inline-flex; order: 3; margin-left: 8px; }
-  .nav-status { order: 2; margin-left: auto; gap: 8px; }
-  .conn-label { max-width: 92px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .nav-links {
-    order: 4; margin: 0; display: none; flex-direction: column; gap: 0;
+  /* Top bar collapses to: brand (left) + hamburger (right). Everything else
+     drops into a single, evenly-stacked dropdown panel. */
+  .nav-inner { position: relative; gap: 12px; }
+  .nav-toggle { display: inline-flex; margin-left: auto; }
+
+  .nav-menu {
+    display: none; flex-direction: column; align-items: stretch; gap: 0;
     position: absolute; left: 0; right: 0; top: calc(100% + 1px);
-    background: rgba(5, 6, 10, 0.98); border-bottom: 1px solid var(--brd);
-    padding: 6px 20px 12px;
+    background: rgba(5, 6, 10, 0.98);
+    border-top: 1px solid var(--brd); border-bottom: 1px solid var(--brd);
+    padding: 8px 20px 16px;
+    max-height: calc(100vh - 60px); overflow-y: auto;
   }
-  .nav.is-open .nav-links { display: flex; }
-  .nav-links a { padding: 13px 2px; font-size: 1rem; border-bottom: 1px solid var(--brd); }
+  .nav.is-open .nav-menu { display: flex; }
+
+  .nav-links { margin: 0; display: flex; flex-direction: column; gap: 0; }
+  .nav-links a { padding: 14px 2px; font-size: 1rem; border-bottom: 1px solid var(--brd); }
   .nav-links a:last-child { border-bottom: 0; }
+
+  .nav-status {
+    margin-left: 0; order: 0; flex-wrap: wrap; gap: 12px;
+    padding-top: 14px; margin-top: 8px; border-top: 1px solid var(--brd);
+  }
+  .conn { flex: 1 1 auto; justify-content: flex-start; }
+  .conn-label { max-width: none; }
 }
 @media (max-width: 620px) {
   .section-head { text-align: left; }

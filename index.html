@@ -79,25 +79,27 @@
         <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
       </button>
 
-      <nav class="nav-links" id="primaryNav" aria-label="Primary">
-        <a href="#how" data-i18n="nav.how">How it works</a>
-        <a href="#pricing" data-i18n="nav.pricing">Pricing</a>
-        <a href="#guide" data-i18n="nav.guide">Token guide</a>
-        <a href="#faq" data-i18n="nav.faq">FAQ</a>
-        <a href="#team" data-i18n="nav.team">Team</a>
-      </nav>
+      <div class="nav-menu" id="navMenu">
+        <nav class="nav-links" id="primaryNav" aria-label="Primary">
+          <a href="#how" data-i18n="nav.how">How it works</a>
+          <a href="#pricing" data-i18n="nav.pricing">Pricing</a>
+          <a href="#guide" data-i18n="nav.guide">Token guide</a>
+          <a href="#faq" data-i18n="nav.faq">FAQ</a>
+          <a href="#team" data-i18n="nav.team">Team</a>
+        </nav>
 
-      <div class="nav-status">
-        <div class="lang" role="group" data-i18n-attr="aria-label:nav.lang">
-          <button class="lang-opt is-active" id="langEn" data-lang="en" type="button" aria-pressed="true">EN</button>
-          <button class="lang-opt" id="langId" data-lang="id" type="button" aria-pressed="false">ID</button>
-        </div>
-        <span class="rate" id="rate" title="GitHub API requests left this hour" hidden></span>
-        <div class="conn" id="connChip" data-state="off">
-          <img class="conn-avatar" id="connAvatar" alt="" width="22" height="22" hidden />
-          <span class="conn-dot" aria-hidden="true"></span>
-          <span class="conn-label" id="connLabel" data-i18n="conn.notConnected">Not connected</span>
-          <button class="conn-forget" id="btnForget" type="button" data-i18n="conn.forget" hidden>Forget</button>
+        <div class="nav-status">
+          <div class="lang" role="group" data-i18n-attr="aria-label:nav.lang">
+            <button class="lang-opt is-active" id="langEn" data-lang="en" type="button" aria-pressed="true">EN</button>
+            <button class="lang-opt" id="langId" data-lang="id" type="button" aria-pressed="false">ID</button>
+          </div>
+          <span class="rate" id="rate" title="GitHub API requests left this hour" hidden></span>
+          <div class="conn" id="connChip" data-state="off">
+            <img class="conn-avatar" id="connAvatar" alt="" width="22" height="22" hidden />
+            <span class="conn-dot" aria-hidden="true"></span>
+            <span class="conn-label" id="connLabel" data-i18n="conn.notConnected">Not connected</span>
+            <button class="conn-forget" id="btnForget" type="button" data-i18n="conn.forget" hidden>Forget</button>
+          </div>
         </div>
       </div>
     </div>

@@ -477,10 +477,14 @@
         nav.classList.toggle("is-open", open);
         navToggle.setAttribute("aria-expanded", open ? "true" : "false");
       };
-      navToggle.addEventListener("click", () => setOpen(!nav.classList.contains("is-open")));
+      navToggle.addEventListener("click", (e) => { e.stopPropagation(); setOpen(!nav.classList.contains("is-open")); });
       const links = document.getElementById("primaryNav");
       if (links) links.addEventListener("click", (e) => { if (e.target.closest("a")) setOpen(false); });
       window.addEventListener("resize", () => { if (window.innerWidth > 760) setOpen(false); });
+      document.addEventListener("click", (e) => {
+        if (nav.classList.contains("is-open") && !e.target.closest(".nav-inner")) setOpen(false);
+      });
+      document.addEventListener("keydown", (e) => { if (e.key === "Escape") setOpen(false); });
     }
 
     // connect
