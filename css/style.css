@@ -1169,6 +1169,9 @@ body.admin { display: block; }
     flex-direction: row; flex-wrap: wrap; align-items: center; gap: 10px 12px;
     padding: 10px clamp(16px, 4vw, 40px);
     border-right: 0; border-bottom: 1px solid var(--brd);
+    /* solid opaque fill: the desktop gradient's top stop (--panel-2) is nearly
+       transparent, so as a sticky strip it let scrolled content bleed through. */
+    background: var(--bg-1);
   }
   .admin-sidebar .brand { margin: 0; flex: 1 1 auto; min-width: 0; }
   .admin-sidebar-foot { order: 1; margin: 0; padding: 0; border-top: 0; }
