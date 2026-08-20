@@ -27,7 +27,6 @@
     async boot() {
       this.cacheStatics();
       this.wire();
-      if (ND.sfx) ND.sfx.wire();
 
       await ND.db.init();
       if (!ND.db.enabled) {
