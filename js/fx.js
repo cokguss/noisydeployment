@@ -17,6 +17,11 @@
     let W = 0, H = 0, dpr = Math.min(window.devicePixelRatio || 1, 2);
     let pts = [];
     const COLS = 22, ROWS = 18;
+    // Pointer position in canvas space; null when the cursor is away. Points near
+    // the pointer get pushed outward, so moving the mouse "parts" the field.
+    const pointer = { x: 0, y: 0, on: false };
+    const RADIUS = 90;      // px of influence around the cursor
+    const PUSH = 26;        // max displacement at the cursor centre
 
     function build() {
       const r = canvas.getBoundingClientRect();
@@ -33,12 +38,24 @@
             gx: padX + x * gw, gy: padY + y * gh,       // grid ("signal") target
             nx: Math.random() * W, ny: Math.random() * H, // noise position
             cx: Math.random() * W, cy: Math.random() * H, // current
+            ox: 0, oy: 0,                                 // pointer push offset (eased)
           });
         }
       }
     }
     build();
     window.addEventListener("resize", build);
+
+    function pointAt(e) {
+      const r = canvas.getBoundingClientRect();
+      const t = e.touches && e.touches[0];
+      pointer.x = (t ? t.clientX : e.clientX) - r.left;
+      pointer.y = (t ? t.clientY : e.clientY) - r.top;
+      pointer.on = true;
+    }
+    canvas.addEventListener("pointermove", pointAt);
+    canvas.addEventListener("pointerdown", pointAt);
+    canvas.addEventListener("pointerleave", () => { pointer.on = false; });
 
     function drawStatic() {
       ctx.clearRect(0, 0, W, H);
@@ -66,14 +83,33 @@
         const ty = p.ny + (p.gy - p.ny) * e;
         // jitter fades out as the grid resolves
         const j = (1 - e) * 6;
-        p.cx = tx + (Math.random() - 0.5) * j;
-        p.cy = ty + (Math.random() - 0.5) * j;
-        const a = 0.25 + e * 0.65;
+        let px = tx + (Math.random() - 0.5) * j;
+        let py = ty + (Math.random() - 0.5) * j;
+
+        // Pointer repulsion: push points radially away from the cursor, easing
+        // the offset in/out so the field parts smoothly and springs back.
+        let txOff = 0, tyOff = 0;
+        if (pointer.on) {
+          const dx = px - pointer.x, dy = py - pointer.y;
+          const dist = Math.hypot(dx, dy);
+          if (dist < RADIUS && dist > 0.01) {
+            const force = (1 - dist / RADIUS) * PUSH;
+            txOff = (dx / dist) * force;
+            tyOff = (dy / dist) * force;
+          }
+        }
+        p.ox += (txOff - p.ox) * 0.15;
+        p.oy += (tyOff - p.oy) * 0.15;
+        p.cx = px + p.ox;
+        p.cy = py + p.oy;
+
+        const near = Math.hypot(p.ox, p.oy);
+        const a = 0.25 + e * 0.65 + Math.min(0.25, near * 0.02);
         // hint of violet in the noisy phase, pure cyan once resolved (ambient only)
         ctx.fillStyle = e > 0.7
-          ? "rgba(34,211,238," + a + ")"
+          ? "rgba(34,211,238," + Math.min(1, a) + ")"
           : "rgba(167,139,250," + (a * 0.8) + ")";
-        const s = 1 + e;
+        const s = 1 + e + Math.min(1.4, near * 0.06);
         ctx.fillRect(p.cx - s / 2, p.cy - s / 2, s, s);
       }
 

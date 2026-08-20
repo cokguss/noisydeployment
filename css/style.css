@@ -220,6 +220,20 @@ code { font-family: var(--mono); font-size: 0.9em; color: var(--accent); }
 .lang-opt:hover { color: var(--muted); }
 .lang-opt.is-active { color: #04121a; background: var(--accent); }
 
+.sound-toggle {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 32px; height: 32px; padding: 0;
+  border: 1px solid var(--brd); border-radius: var(--r-pill);
+  background: var(--panel); color: var(--muted); cursor: pointer;
+  transition: color 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+}
+.sound-toggle:hover { color: var(--accent); border-color: var(--accent); }
+.sound-toggle .i { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.sound-toggle .i-off { display: none; }
+.sound-toggle.is-muted { color: var(--faint); }
+.sound-toggle.is-muted .i-on { display: none; }
+.sound-toggle.is-muted .i-off { display: block; }
+
 /* --------------------------------------------------------------- layout */
 main { display: block; }
 section { max-width: var(--maxw); margin: 0 auto; padding: 0 20px; }

@@ -701,11 +701,25 @@
     ui.cache();
     ND.i18n.init();
     ND.fx.initHero(ui.el.heroCanvas);
+    if (ND.sfx) { ND.sfx.wire(); initSound(); }
     wire();
     initReveal();
     restore();
     updateSlug();
     initAccounts();
+  }
+
+  // Reflect the saved sound preference on the toggle and let it flip mute.
+  function initSound() {
+    const btn = document.getElementById("soundToggle");
+    if (!btn) return;
+    const sync = () => {
+      const on = ND.sfx.isEnabled();
+      btn.setAttribute("aria-pressed", on ? "true" : "false");
+      btn.classList.toggle("is-muted", !on);
+    };
+    sync();
+    btn.addEventListener("click", () => { ND.sfx.toggle(); sync(); });
   }
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
