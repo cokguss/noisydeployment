@@ -10,38 +10,40 @@
 
   const U = ND.util;
   const STORE_KEY = "nd.sound";
-  const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-  // Enabled unless the user muted it before. Under reduced-motion we default to
-  // off so the site stays quiet for people who asked for calm.
+  // Enabled unless the user muted it before. Sound is not motion, so we do NOT
+  // couple this to prefers-reduced-motion — otherwise phones with Reduce Motion
+  // on (common, and sometimes auto-enabled) would stay silent for no reason.
   let enabled = (function () {
     const saved = U.load(STORE_KEY, false);
     if (saved === "off") return false;
-    if (saved === "on") return true;
-    return !reduce;
+    return true; // default on for everyone; explicit mute is remembered
   })();
 
   let ctx = null;
-  // Browsers block audio until the first user gesture; create/resume lazily.
+  // Browsers block audio until the first user gesture; create lazily. We do NOT
+  // resume() here — resume is async, and callers must not schedule sound until
+  // the context is actually "running" (see tick()), or mobile drops the audio.
   function audio() {
     if (!ctx) {
       const AC = window.AudioContext || window.webkitAudioContext;
       if (!AC) return null;
       ctx = new AC();
     }
-    if (ctx.state === "suspended") ctx.resume();
     return ctx;
   }
 
-  // Mobile (esp. iOS Safari) keeps the AudioContext muted until a silent buffer
-  // is played inside a real touch gesture — resume() alone isn't enough. Run
-  // this once on the first touch/pointer/click so later ticks actually sound.
+  // Mobile (esp. iOS Safari) keeps the AudioContext suspended until it is
+  // resumed inside a real user gesture, and some browsers also want an actual
+  // buffer started once. Run this on the first touch/pointer so later ticks
+  // reliably sound. resume() is async; we don't await it here.
   let unlocked = false;
   function unlock() {
     if (unlocked) return;
     const ac = audio();
     if (!ac) return;
     unlocked = true;
+    try { ac.resume(); } catch (_) { /* best effort */ }
     try {
       const b = ac.createBuffer(1, 1, 22050);
       const s = ac.createBufferSource();
@@ -58,6 +60,19 @@
     if (!enabled) return;
     const ac = audio();
     if (!ac) return;
+    // If the context isn't running yet (very first taps on mobile), resume it
+    // and play once it's actually running so the sound isn't scheduled into a
+    // suspended context and silently dropped.
+    if (ac.state !== "running") {
+      ac.resume().then(playTick).catch(function () {});
+      return;
+    }
+    playTick();
+  }
+
+  function playTick() {
+    const ac = ctx;
+    if (!ac || ac.state !== "running") return;
     const t = ac.currentTime;
 
     // Noise layer: 30ms buffer shaped by an exponential fade, highpassed.
@@ -111,11 +126,13 @@
     if (document.__ndSfxWired) return; // idempotent: safe if called twice
     document.__ndSfxWired = true;
 
-    // First real gesture unlocks audio on mobile. touchstart fires earliest on
-    // iOS/Android; keep it so the very first tap already makes a sound.
+    // First real gesture unlocks audio on mobile. iOS honors touchend/click for
+    // audio unlocking more reliably than touchstart, so listen on several so the
+    // context is running by the time the first tick tries to play.
     const unlockOnce = () => { unlock(); };
-    document.addEventListener("touchstart", unlockOnce, { capture: true, passive: true });
-    document.addEventListener("pointerdown", unlockOnce, { capture: true, passive: true });
+    ["touchstart", "touchend", "pointerdown", "click"].forEach(function (evt) {
+      document.addEventListener(evt, unlockOnce, { capture: true, passive: true });
+    });
 
     document.addEventListener("pointerdown", (e) => {
       if (!enabled) return;
