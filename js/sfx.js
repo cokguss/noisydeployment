@@ -119,9 +119,13 @@
   function toggle() { setEnabled(!enabled); return enabled; }
   function isEnabled() { return enabled; }
 
-  // Delegate one listener for the whole page. Play a tick on ANY primary click
-  // anywhere — not just on obvious controls — so the whole site feels tactile.
-  // Capture phase keeps the sound in sync even if a handler stops propagation.
+  // Delegate one listener for the whole page. We must NOT play on pointerdown,
+  // because on touch a pointerdown is also the start of a scroll — that made the
+  // click sound fire while scrolling. Instead we remember where the pointer went
+  // down and only play on pointerup when it barely moved and was quick, i.e. a
+  // real tap/click rather than a scroll or drag.
+  const TAP_MOVE = 10;   // px of slop allowed for a "tap"
+  const TAP_TIME = 600;  // ms; longer press-and-hold isn't a click either
   function wire() {
     if (document.__ndSfxWired) return; // idempotent: safe if called twice
     document.__ndSfxWired = true;
@@ -134,11 +138,31 @@
       document.addEventListener(evt, unlockOnce, { capture: true, passive: true });
     });
 
+    let down = null; // { x, y, t, id } of the current primary pointer
     document.addEventListener("pointerdown", (e) => {
-      if (!enabled) return;
       // Left mouse button only; touch and pen always pass.
-      if (e.pointerType === "mouse" && e.button !== 0) return;
-      unlock(); // ensure unlocked even if this is the first interaction
+      if (e.pointerType === "mouse" && e.button !== 0) { down = null; return; }
+      unlock(); // ensure audio is unlocking from within this real gesture
+      down = { x: e.clientX, y: e.clientY, t: Date.now(), id: e.pointerId };
+    }, true);
+
+    // If the finger/mouse moves past the slop, it's a scroll or drag — cancel.
+    document.addEventListener("pointermove", (e) => {
+      if (!down || e.pointerId !== down.id) return;
+      if (Math.abs(e.clientX - down.x) > TAP_MOVE || Math.abs(e.clientY - down.y) > TAP_MOVE) {
+        down = null;
+      }
+    }, { capture: true, passive: true });
+
+    document.addEventListener("pointercancel", () => { down = null; }, true);
+
+    document.addEventListener("pointerup", (e) => {
+      const d = down;
+      down = null;
+      if (!enabled || !d || e.pointerId !== d.id) return;
+      // Only a quick, near-stationary release counts as a click.
+      if (Date.now() - d.t > TAP_TIME) return;
+      if (Math.abs(e.clientX - d.x) > TAP_MOVE || Math.abs(e.clientY - d.y) > TAP_MOVE) return;
       // Skip disabled controls so they stay "dead".
       const ctl = e.target && e.target.closest && e.target.closest("button, input, select, textarea, a, [role='button']");
       if (ctl && ctl.disabled) return;
