@@ -86,15 +86,19 @@
   function toggle() { setEnabled(!enabled); return enabled; }
   function isEnabled() { return enabled; }
 
-  // Delegate one listener for the whole page. Only fire on genuinely clickable
-  // controls so we don't tick on every stray click. Capture phase keeps the
-  // sound in sync even if a handler calls stopPropagation.
-  const CLICKABLE = "button, a, .btn, [role='button'], input[type='checkbox'], input[type='radio'], select, .tab, .admin-tab, .chip, .method-chip";
+  // Delegate one listener for the whole page. Play a tick on ANY primary click
+  // anywhere — not just on obvious controls — so the whole site feels tactile.
+  // Capture phase keeps the sound in sync even if a handler stops propagation.
   function wire() {
+    if (document.__ndSfxWired) return; // idempotent: safe if called twice
+    document.__ndSfxWired = true;
     document.addEventListener("pointerdown", (e) => {
       if (!enabled) return;
-      const el = e.target.closest(CLICKABLE);
-      if (!el || el.disabled) return;
+      // Left mouse button only; touch and pen always pass.
+      if (e.pointerType === "mouse" && e.button !== 0) return;
+      // Skip disabled controls so they stay "dead".
+      const ctl = e.target && e.target.closest && e.target.closest("button, input, select, textarea, a, [role='button']");
+      if (ctl && ctl.disabled) return;
       press();
     }, true);
   }
