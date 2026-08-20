@@ -33,6 +33,24 @@
     return ctx;
   }
 
+  // Mobile (esp. iOS Safari) keeps the AudioContext muted until a silent buffer
+  // is played inside a real touch gesture — resume() alone isn't enough. Run
+  // this once on the first touch/pointer/click so later ticks actually sound.
+  let unlocked = false;
+  function unlock() {
+    if (unlocked) return;
+    const ac = audio();
+    if (!ac) return;
+    unlocked = true;
+    try {
+      const b = ac.createBuffer(1, 1, 22050);
+      const s = ac.createBufferSource();
+      s.buffer = b;
+      s.connect(ac.destination);
+      s.start(0);
+    } catch (_) { /* best effort */ }
+  }
+
   // A short, quiet mechanical click matched to noisyuploader.vercel.app: a
   // highpassed white-noise burst (the "tick" texture) layered with a fast
   // square-wave pitch sweep. ~30ms total, both layers very soft.
@@ -92,10 +110,18 @@
   function wire() {
     if (document.__ndSfxWired) return; // idempotent: safe if called twice
     document.__ndSfxWired = true;
+
+    // First real gesture unlocks audio on mobile. touchstart fires earliest on
+    // iOS/Android; keep it so the very first tap already makes a sound.
+    const unlockOnce = () => { unlock(); };
+    document.addEventListener("touchstart", unlockOnce, { capture: true, passive: true });
+    document.addEventListener("pointerdown", unlockOnce, { capture: true, passive: true });
+
     document.addEventListener("pointerdown", (e) => {
       if (!enabled) return;
       // Left mouse button only; touch and pen always pass.
       if (e.pointerType === "mouse" && e.button !== 0) return;
+      unlock(); // ensure unlocked even if this is the first interaction
       // Skip disabled controls so they stay "dead".
       const ctl = e.target && e.target.closest && e.target.closest("button, input, select, textarea, a, [role='button']");
       if (ctl && ctl.disabled) return;
