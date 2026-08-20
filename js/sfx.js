@@ -1,9 +1,12 @@
 /* ============================================================================
-   sfx.js — synthetic click sounds via the Web Audio API. No audio files: every
-   sound is generated on the fly, so it adds zero bytes to the page weight and
-   stays crisp at any volume. A single global click listener plays a soft tick
-   on interactive elements. Users can mute it; the choice is remembered, and
-   prefers-reduced-motion starts muted by default.
+   sfx.js — synthetic click sound. The click is synthesized ONCE with the Web
+   Audio API (a highpassed noise burst layered with a fast square sweep, matched
+   to noisyuploader.vercel.app), rendered to a small WAV clip, and then played
+   through a pool of <audio> elements. This matters on mobile Safari: a live
+   AudioContext is aggressively suspended in the background, which made clicks
+   lag (async resume) or drop out entirely. HTMLAudio elements are not suspended
+   that way, play instantly once unlocked, and stay reliable across app-switches.
+   Users can mute it; the choice is remembered.
    ==========================================================================*/
 (function (ND) {
   "use strict";
@@ -12,158 +15,199 @@
   const STORE_KEY = "nd.sound";
 
   // Enabled unless the user muted it before. Sound is not motion, so we do NOT
-  // couple this to prefers-reduced-motion — otherwise phones with Reduce Motion
-  // on (common, and sometimes auto-enabled) would stay silent for no reason.
+  // couple this to prefers-reduced-motion.
   let enabled = (function () {
     const saved = U.load(STORE_KEY, false);
     if (saved === "off") return false;
-    return true; // default on for everyone; explicit mute is remembered
+    return true;
   })();
 
-  let ctx = null;
-  // Browsers block audio until the first user gesture; create lazily. We do NOT
-  // resume() here — resume is async, and callers must not schedule sound until
-  // the context is actually "running" (see tick()), or mobile drops the audio.
-  function audio() {
-    if (!ctx) {
-      const AC = window.AudioContext || window.webkitAudioContext;
-      if (!AC) return null;
-      ctx = new AC();
+  /* ---------------------------------------------------------- clip rendering */
+  const SR = 44100;
+  const DUR = 0.035; // seconds of audio in the clip
+  let clipUrl = null;    // blob: URL of the rendered WAV
+  let pool = [];         // pooled HTMLAudioElement instances
+  let poolIdx = 0;
+  const POOL_SIZE = 6;   // enough voices for rapid clicking
+  let primed = false;    // pool has been unlocked inside a user gesture
+
+  // Encode a mono Float32 sample array as a 16-bit PCM WAV blob.
+  function encodeWav(samples, sampleRate) {
+    const n = samples.length;
+    const buf = new ArrayBuffer(44 + n * 2);
+    const view = new DataView(buf);
+    const wr = (off, str) => { for (let i = 0; i < str.length; i++) view.setUint8(off + i, str.charCodeAt(i)); };
+    wr(0, "RIFF");
+    view.setUint32(4, 36 + n * 2, true);
+    wr(8, "WAVE");
+    wr(12, "fmt ");
+    view.setUint32(16, 16, true);
+    view.setUint16(20, 1, true);          // PCM
+    view.setUint16(22, 1, true);          // mono
+    view.setUint32(24, sampleRate, true);
+    view.setUint32(28, sampleRate * 2, true);
+    view.setUint16(32, 2, true);
+    view.setUint16(34, 16, true);
+    wr(36, "data");
+    view.setUint32(40, n * 2, true);
+    let off = 44;
+    for (let i = 0; i < n; i++) {
+      let s = Math.max(-1, Math.min(1, samples[i]));
+      view.setInt16(off, s < 0 ? s * 0x8000 : s * 0x7fff, true);
+      off += 2;
     }
-    return ctx;
+    return new Blob([view], { type: "audio/wav" });
   }
 
-  // Mobile (esp. iOS Safari) keeps the AudioContext suspended until it is
-  // resumed inside a real user gesture, and some browsers also want an actual
-  // buffer started once. Run this on the first touch/pointer so later ticks
-  // reliably sound. resume() is async; we don't await it here.
-  let unlocked = false;
-  function unlock() {
-    if (unlocked) return;
-    const ac = audio();
-    if (!ac) return;
-    unlocked = true;
-    try { ac.resume(); } catch (_) { /* best effort */ }
-    try {
-      const b = ac.createBuffer(1, 1, 22050);
-      const s = ac.createBufferSource();
-      s.buffer = b;
-      s.connect(ac.destination);
-      s.start(0);
-    } catch (_) { /* best effort */ }
-  }
+  // Render the click offline (once) so the exact filtered/synthesized tone is
+  // baked into a clip, then wire up the <audio> pool. Offline rendering does not
+  // need a user gesture, so we can do this at load.
+  function buildClip() {
+    if (clipUrl) return Promise.resolve();
+    const OAC = window.OfflineAudioContext || window.webkitOfflineAudioContext;
+    if (!OAC) { buildClipManually(); return Promise.resolve(); }
 
-  // A short, quiet mechanical click matched to noisyuploader.vercel.app: a
-  // highpassed white-noise burst (the "tick" texture) layered with a fast
-  // square-wave pitch sweep. ~30ms total, both layers very soft.
-  function tick() {
-    if (!enabled) return;
-    const ac = audio();
-    if (!ac) return;
-    // If the context isn't running yet (very first taps on mobile), resume it
-    // and play once it's actually running so the sound isn't scheduled into a
-    // suspended context and silently dropped.
-    if (ac.state !== "running") {
-      ac.resume().then(playTick).catch(function () {});
-      return;
-    }
-    playTick();
-  }
+    let oc;
+    try { oc = new OAC(1, Math.ceil(SR * DUR), SR); }
+    catch (_) { buildClipManually(); return Promise.resolve(); }
 
-  function playTick() {
-    const ac = ctx;
-    if (!ac || ac.state !== "running") return;
-    const t = ac.currentTime;
-
+    const t = 0;
     // Noise layer: 30ms buffer shaped by an exponential fade, highpassed.
-    const n = Math.floor(ac.sampleRate * 0.03);
-    const buf = ac.createBuffer(1, n, ac.sampleRate);
-    const data = buf.getChannelData(0);
-    for (let c = 0; c < n; c++) {
-      data[c] = (Math.random() * 2 - 1) * Math.pow(1 - c / n, 2.5);
-    }
-    const src = ac.createBufferSource();
-    src.buffer = buf;
-    const nGain = ac.createGain();
+    const nlen = Math.floor(SR * 0.03);
+    const nbuf = oc.createBuffer(1, nlen, SR);
+    const nd = nbuf.getChannelData(0);
+    for (let c = 0; c < nlen; c++) nd[c] = (Math.random() * 2 - 1) * Math.pow(1 - c / nlen, 2.5);
+    const src = oc.createBufferSource(); src.buffer = nbuf;
+    const nGain = oc.createGain();
     nGain.gain.setValueAtTime(0.18, t);
     nGain.gain.exponentialRampToValueAtTime(0.0001, t + 0.03);
-    const hp = ac.createBiquadFilter();
-    hp.type = "highpass";
-    hp.frequency.value = 1800;
-    src.connect(hp); hp.connect(nGain); nGain.connect(ac.destination);
+    const hp = oc.createBiquadFilter(); hp.type = "highpass"; hp.frequency.value = 1800;
+    src.connect(hp); hp.connect(nGain); nGain.connect(oc.destination);
 
     // Tone layer: square wave sweeping 2400 -> 900 Hz, barely audible.
-    const osc = ac.createOscillator();
-    osc.type = "square";
+    const osc = oc.createOscillator(); osc.type = "square";
     osc.frequency.setValueAtTime(2400, t);
     osc.frequency.exponentialRampToValueAtTime(900, t + 0.02);
-    const oGain = ac.createGain();
+    const oGain = oc.createGain();
     oGain.gain.setValueAtTime(0.05, t);
     oGain.gain.exponentialRampToValueAtTime(0.0001, t + 0.025);
-    osc.connect(oGain); oGain.connect(ac.destination);
+    osc.connect(oGain); oGain.connect(oc.destination);
 
-    src.start(t); src.stop(t + 0.03);
-    osc.start(t); osc.stop(t + 0.03);
+    src.start(t); osc.start(t); osc.stop(t + 0.03);
+
+    return oc.startRendering().then((rendered) => {
+      finishClip(rendered.getChannelData(0));
+    }).catch(() => { buildClipManually(); });
   }
 
-  // Public one-shots. Both map to the same soft click; kept as two names so
-  // existing callers (press/soft) keep working.
+  // Fallback if OfflineAudioContext is unavailable: approximate the click by
+  // synthesizing samples directly (no biquad; a simple high-frequency emphasis).
+  function buildClipManually() {
+    const n = Math.floor(SR * 0.03);
+    const s = new Float32Array(n);
+    let prev = 0;
+    for (let c = 0; c < n; c++) {
+      const env = Math.pow(1 - c / n, 2.5);
+      const noise = (Math.random() * 2 - 1) * env * 0.18;
+      const hp = noise - prev; prev = noise; // crude high-pass (difference)
+      const freq = 2400 + (900 - 2400) * (c / n);
+      const tone = (Math.sin(2 * Math.PI * freq * (c / SR)) > 0 ? 1 : -1) * 0.05 * env;
+      s[c] = Math.max(-1, Math.min(1, hp + tone));
+    }
+    finishClip(s);
+  }
+
+  function finishClip(samples) {
+    try {
+      clipUrl = URL.createObjectURL(encodeWav(samples, SR));
+      for (let i = 0; i < POOL_SIZE; i++) {
+        const a = new Audio(clipUrl);
+        a.preload = "auto";
+        a.volume = 1;
+        pool.push(a);
+      }
+      if (wantPrime) primePool();
+    } catch (_) { /* leave clipUrl null; press() becomes a no-op */ }
+  }
+
+  // iOS/Safari require the first play() to happen inside a user gesture. Kick
+  // each pooled element once (play then immediately pause+rewind) so later
+  // plays are allowed and instant.
+  let wantPrime = false;
+  function primePool() {
+    if (primed || !pool.length) return;
+    primed = true;
+    pool.forEach((a) => {
+      try {
+        const p = a.play();
+        if (p && p.then) p.then(() => { a.pause(); a.currentTime = 0; }).catch(() => {});
+        else { a.pause(); a.currentTime = 0; }
+      } catch (_) { /* best effort */ }
+    });
+  }
+
+  // Called from the first real gesture. Ensures the clip exists and the pool is
+  // unlocked. If the clip isn't rendered yet, prime as soon as it is.
+  function unlock() {
+    wantPrime = true;
+    if (!clipUrl) { buildClip(); return; }
+    primePool();
+  }
+
+  /* ------------------------------------------------------------------ play */
+  function tick() {
+    if (!enabled || !pool.length) return;
+    // Round-robin so rapid clicks don't cut each other off.
+    const a = pool[poolIdx];
+    poolIdx = (poolIdx + 1) % pool.length;
+    try {
+      a.currentTime = 0;
+      const p = a.play();
+      if (p && p.catch) p.catch(() => {});
+    } catch (_) { /* ignore */ }
+  }
+
   function press() { tick(); }
   function soft() { tick(); }
 
   function setEnabled(on) {
     enabled = !!on;
     U.store(STORE_KEY, enabled ? "on" : "off");
-    if (enabled) press(); // audible confirmation when turning it on
+    if (enabled) { unlock(); press(); } // audible confirmation when turning on
   }
   function toggle() { setEnabled(!enabled); return enabled; }
   function isEnabled() { return enabled; }
 
-  // Delegate one listener for the whole page. We must NOT play on pointerdown,
-  // because on touch a pointerdown is also the start of a scroll — that made the
-  // click sound fire while scrolling. Instead we remember where the pointer went
-  // down and only play on pointerup when it barely moved and was quick, i.e. a
-  // real tap/click rather than a scroll or drag.
+  /* ------------------------------------------------------------------ wire */
+  // Only play on real taps/clicks — not while scrolling or dragging. We remember
+  // where the pointer went down and play on pointerup when it barely moved and
+  // was quick.
   const TAP_MOVE = 10;   // px of slop allowed for a "tap"
-  const TAP_TIME = 600;  // ms; longer press-and-hold isn't a click either
+  const TAP_TIME = 600;  // ms; a long press-and-hold isn't a click either
   function wire() {
-    if (document.__ndSfxWired) return; // idempotent: safe if called twice
+    if (document.__ndSfxWired) return; // idempotent
     document.__ndSfxWired = true;
 
-    // First real gesture unlocks audio on mobile. iOS honors touchend/click for
-    // audio unlocking more reliably than touchstart, so listen on several so the
-    // context is running by the time the first tick tries to play.
+    // Render the clip up front so it's ready before the first interaction.
+    buildClip();
+
+    // First real gesture unlocks/primes the audio pool. Safari unlocks most
+    // reliably on touchend/click, so listen on several.
     const unlockOnce = () => { unlock(); };
     ["touchstart", "touchend", "pointerdown", "click"].forEach(function (evt) {
       document.addEventListener(evt, unlockOnce, { capture: true, passive: true });
     });
 
-    // Leaving the tab/app suspends the AudioContext. If we only resumed on the
-    // next tap, that first tap would lag while resume() (async) completes — the
-    // delay the user hears after app-switching. Resume eagerly the moment the
-    // page is visible/focused again so it's already running before any tap.
-    const wake = () => { if (ctx && ctx.state !== "running") { try { ctx.resume(); } catch (_) {} } };
-    document.addEventListener("visibilitychange", () => { if (!document.hidden) wake(); });
-    window.addEventListener("focus", wake);
-    window.addEventListener("pageshow", wake);
-
-    let down = null; // { x, y, t, id } of the current primary pointer
+    let down = null; // { x, y, t, id }
     document.addEventListener("pointerdown", (e) => {
-      // Left mouse button only; touch and pen always pass.
       if (e.pointerType === "mouse" && e.button !== 0) { down = null; return; }
-      unlock(); // ensure audio is unlocking from within this real gesture
-      // Wake a context that got suspended in the background so the eventual
-      // pointerup tick plays immediately instead of lagging.
-      if (ctx && ctx.state !== "running") { try { ctx.resume(); } catch (_) {} }
+      unlock();
       down = { x: e.clientX, y: e.clientY, t: Date.now(), id: e.pointerId };
     }, true);
 
-    // If the finger/mouse moves past the slop, it's a scroll or drag — cancel.
     document.addEventListener("pointermove", (e) => {
       if (!down || e.pointerId !== down.id) return;
-      if (Math.abs(e.clientX - down.x) > TAP_MOVE || Math.abs(e.clientY - down.y) > TAP_MOVE) {
-        down = null;
-      }
+      if (Math.abs(e.clientX - down.x) > TAP_MOVE || Math.abs(e.clientY - down.y) > TAP_MOVE) down = null;
     }, { capture: true, passive: true });
 
     document.addEventListener("pointercancel", () => { down = null; }, true);
@@ -172,10 +216,8 @@
       const d = down;
       down = null;
       if (!enabled || !d || e.pointerId !== d.id) return;
-      // Only a quick, near-stationary release counts as a click.
       if (Date.now() - d.t > TAP_TIME) return;
       if (Math.abs(e.clientX - d.x) > TAP_MOVE || Math.abs(e.clientY - d.y) > TAP_MOVE) return;
-      // Skip disabled controls so they stay "dead".
       const ctl = e.target && e.target.closest && e.target.closest("button, input, select, textarea, a, [role='button']");
       if (ctl && ctl.disabled) return;
       press();
