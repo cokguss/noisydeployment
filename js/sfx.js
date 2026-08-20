@@ -33,38 +33,50 @@
     return ctx;
   }
 
-  // A short filtered click: a fast pitch drop through a band-pass, enveloped so
-  // it reads as a tactile "tick" rather than a beep. freq/gain tune the flavour.
-  function tick(freq, gain) {
+  // A short, quiet mechanical click matched to noisyuploader.vercel.app: a
+  // highpassed white-noise burst (the "tick" texture) layered with a fast
+  // square-wave pitch sweep. ~30ms total, both layers very soft.
+  function tick() {
     if (!enabled) return;
     const ac = audio();
     if (!ac) return;
-    const now = ac.currentTime;
+    const t = ac.currentTime;
+
+    // Noise layer: 30ms buffer shaped by an exponential fade, highpassed.
+    const n = Math.floor(ac.sampleRate * 0.03);
+    const buf = ac.createBuffer(1, n, ac.sampleRate);
+    const data = buf.getChannelData(0);
+    for (let c = 0; c < n; c++) {
+      data[c] = (Math.random() * 2 - 1) * Math.pow(1 - c / n, 2.5);
+    }
+    const src = ac.createBufferSource();
+    src.buffer = buf;
+    const nGain = ac.createGain();
+    nGain.gain.setValueAtTime(0.18, t);
+    nGain.gain.exponentialRampToValueAtTime(0.0001, t + 0.03);
+    const hp = ac.createBiquadFilter();
+    hp.type = "highpass";
+    hp.frequency.value = 1800;
+    src.connect(hp); hp.connect(nGain); nGain.connect(ac.destination);
+
+    // Tone layer: square wave sweeping 2400 -> 900 Hz, barely audible.
     const osc = ac.createOscillator();
-    const bp = ac.createBiquadFilter();
-    const amp = ac.createGain();
+    osc.type = "square";
+    osc.frequency.setValueAtTime(2400, t);
+    osc.frequency.exponentialRampToValueAtTime(900, t + 0.02);
+    const oGain = ac.createGain();
+    oGain.gain.setValueAtTime(0.05, t);
+    oGain.gain.exponentialRampToValueAtTime(0.0001, t + 0.025);
+    osc.connect(oGain); oGain.connect(ac.destination);
 
-    osc.type = "triangle";
-    osc.frequency.setValueAtTime(freq, now);
-    osc.frequency.exponentialRampToValueAtTime(freq * 0.5, now + 0.03);
-
-    bp.type = "bandpass";
-    bp.frequency.value = freq;
-    bp.Q.value = 6;
-
-    amp.gain.setValueAtTime(0, now);
-    amp.gain.linearRampToValueAtTime(gain, now + 0.004);
-    amp.gain.exponentialRampToValueAtTime(0.0001, now + 0.07);
-
-    osc.connect(bp); bp.connect(amp); amp.connect(ac.destination);
-    osc.start(now);
-    osc.stop(now + 0.08);
+    src.start(t); src.stop(t + 0.03);
+    osc.start(t); osc.stop(t + 0.03);
   }
 
-  // Public one-shots. `press` is the firmer down-click; `soft` a lighter tick
-  // for hovers/secondary actions if we ever want it.
-  function press() { tick(660, 0.06); }
-  function soft() { tick(880, 0.03); }
+  // Public one-shots. Both map to the same soft click; kept as two names so
+  // existing callers (press/soft) keep working.
+  function press() { tick(); }
+  function soft() { tick(); }
 
   function setEnabled(on) {
     enabled = !!on;
