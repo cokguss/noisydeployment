@@ -138,11 +138,23 @@
       document.addEventListener(evt, unlockOnce, { capture: true, passive: true });
     });
 
+    // Leaving the tab/app suspends the AudioContext. If we only resumed on the
+    // next tap, that first tap would lag while resume() (async) completes — the
+    // delay the user hears after app-switching. Resume eagerly the moment the
+    // page is visible/focused again so it's already running before any tap.
+    const wake = () => { if (ctx && ctx.state !== "running") { try { ctx.resume(); } catch (_) {} } };
+    document.addEventListener("visibilitychange", () => { if (!document.hidden) wake(); });
+    window.addEventListener("focus", wake);
+    window.addEventListener("pageshow", wake);
+
     let down = null; // { x, y, t, id } of the current primary pointer
     document.addEventListener("pointerdown", (e) => {
       // Left mouse button only; touch and pen always pass.
       if (e.pointerType === "mouse" && e.button !== 0) { down = null; return; }
       unlock(); // ensure audio is unlocking from within this real gesture
+      // Wake a context that got suspended in the background so the eventual
+      // pointerup tick plays immediately instead of lagging.
+      if (ctx && ctx.state !== "running") { try { ctx.resume(); } catch (_) {} }
       down = { x: e.clientX, y: e.clientY, t: Date.now(), id: e.pointerId };
     }, true);
 
